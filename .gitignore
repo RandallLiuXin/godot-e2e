@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Godot
+.godot/
+*.import
+
+# Addon copies in test/example projects (auto-copied by conftest.py)
+tests/godot_project/addons/
+examples/*/godot_project/addons/
+
+# Test output
+test_output/
+
+# IDE
+.vscode/
+.idea/

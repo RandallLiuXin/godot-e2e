@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install package
+        run: pip install -e ".[dev]"
+
+      - name: Check syntax (py_compile)
+        run: |
+          python -m py_compile python/godot_e2e/client.py
+          python -m py_compile python/godot_e2e/commands.py
+          python -m py_compile python/godot_e2e/cli.py
+          python -m py_compile python/godot_e2e/types.py
+          python -m py_compile python/godot_e2e/fixtures.py
+          python -m py_compile python/godot_e2e/launcher.py
+          python -m py_compile python/godot_e2e/__init__.py
+
+      - name: Run ruff (if available)
+        run: ruff check python/ || true
+
+  test-linux:
+    name: Test (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb wget unzip
+
+      - name: Download Godot 4.4 stable
+        run: |
+          wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
+          unzip Godot_v4.4-stable_linux.x86_64.zip
+          chmod +x Godot_v4.4-stable_linux.x86_64
+
+      - name: Install Python package
+        run: pip install -e ".[dev]" && pip install pytest-timeout
+
+      - name: Verify Godot binary
+        run: xvfb-run -a ./Godot_v4.4-stable_linux.x86_64 --version
+
+      - name: Run tests
+        run: |
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest tests/ -v --timeout=60
+
+      - name: Run example tests (platformer)
+        run: |
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/platformer/tests/e2e/ -v --timeout=60
+
+      - name: Run example tests (minimal)
+        run: |
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/minimal/tests/e2e/ -v --timeout=60
+
+      - name: Run example tests (ui_testing)
+        run: |
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/ui_testing/tests/e2e/ -v --timeout=60
+
+      - name: Upload test output artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output-linux
+          path: test_output/
+          if-no-files-found: ignore
+
+  test-windows:
+    name: Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Download Godot 4.4 stable
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_win64.exe.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath .
+
+      - name: Install Python package
+        run: pip install -e ".[dev]" && pip install pytest-timeout
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          python -m pytest tests/ -v --timeout=60
+
+      - name: Run example tests (platformer)
+        shell: pwsh
+        run: |
+          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          python -m pytest examples/platformer/tests/e2e/ -v --timeout=60
+
+      - name: Run example tests (minimal)
+        shell: pwsh
+        run: |
+          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          python -m pytest examples/minimal/tests/e2e/ -v --timeout=60
+
+      - name: Run example tests (ui_testing)
+        shell: pwsh
+        run: |
+          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          python -m pytest examples/ui_testing/tests/e2e/ -v --timeout=60
+
+      - name: Upload test output artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output-windows
+          path: test_output/
+          if-no-files-found: ignore

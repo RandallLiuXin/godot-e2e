@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "godot-e2e"
+version = "0.1.0"
+description = "Out-of-process E2E testing tool for Godot"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "LIU MINGJUN"},
+]
+keywords = ["godot", "e2e", "testing", "game", "automation", "pytest"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Pytest",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Games/Entertainment",
+]
+dependencies = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/RandallLiuXin/godot-e2e"
+Repository = "https://github.com/RandallLiuXin/godot-e2e"
+Documentation = "https://github.com/RandallLiuXin/godot-e2e/tree/main/docs"
+Issues = "https://github.com/RandallLiuXin/godot-e2e/issues"
+Changelog = "https://github.com/RandallLiuXin/godot-e2e/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.entry-points.pytest11]
+godot_e2e = "godot_e2e.fixtures"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.godot-e2e]
+godot_path = ""
+project_path = ""
