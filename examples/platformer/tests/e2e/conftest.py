@@ -28,7 +28,7 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="module")
 def _game_process():
-    with GodotE2E.launch(GODOT_PROJECT) as game:
+    with GodotE2E.launch(GODOT_PROJECT, timeout=30.0) as game:
         game.wait_for_node("/root/Main", timeout=10.0)
         yield game
 
