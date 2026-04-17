@@ -18,6 +18,18 @@ examples/*/godot_project/addons/
 # Test output
 test_output/
 
-# IDE
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+credentials.json
+
+# IDE and editor
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store

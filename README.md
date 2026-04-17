@@ -4,9 +4,9 @@
 
 [![CI](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/godot-e2e)](https://pypi.org/project/godot-e2e/)
-[![Python](https://img.shields.io/pypi/pyversions/godot-e2e)](https://pypi.org/project/godot-e2e/)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://pypi.org/project/godot-e2e/)
 [![Godot](https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine)](https://godotengine.org/)
-[![License](https://img.shields.io/github/license/RandallLiuXin/godot-e2e)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green)](LICENSE)
 
 Out-of-process E2E testing tool for Godot
 
