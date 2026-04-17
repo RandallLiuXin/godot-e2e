@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#478CBF"/>
+      <stop offset="100%" stop-color="#345E7D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="40" ry="40" fill="url(#bg)"/>
+
+  <!-- Godot-inspired robot head -->
+  <!-- Antenna stem -->
+  <line x1="128" y1="48" x2="128" y2="26" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <!-- Antenna ball (green = tests passing) -->
+  <circle cx="128" cy="21" r="8" fill="#8FCE00"/>
+
+  <!-- Head outline -->
+  <circle cx="128" cy="100" r="54" fill="rgba(255,255,255,0.12)" stroke="white" stroke-width="6"/>
+
+  <!-- Left eye -->
+  <circle cx="104" cy="90" r="14" fill="white"/>
+  <circle cx="107" cy="88" r="5.5" fill="#345E7D"/>
+
+  <!-- Right eye -->
+  <circle cx="152" cy="90" r="14" fill="white"/>
+  <circle cx="155" cy="88" r="5.5" fill="#345E7D"/>
+
+  <!-- Smile mouth -->
+  <path d="M108,116 Q128,138 148,116" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- E2E text -->
+  <text x="128" y="198" font-family="Arial,Helvetica,sans-serif" font-size="50" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="3">E2E</text>
+
+  <!-- Green accent underline -->
+  <line x1="62" y1="212" x2="194" y2="212" stroke="#8FCE00" stroke-width="4" stroke-linecap="round"/>
+</svg>
