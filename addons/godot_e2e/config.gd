@@ -4,7 +4,8 @@
 ## Usage:
 ##   var cfg = preload("config.gd")
 ##   cfg.is_enabled()   # --e2e flag present?
-##   cfg.get_port()     # --e2e-port=N (default 6008)
+##   cfg.get_port()     # --e2e-port=N (default 6008, 0 = auto)
+##   cfg.get_port_file()# --e2e-port-file=PATH (write actual port here)
 ##   cfg.get_token()    # --e2e-token=X
 ##   cfg.is_logging()   # --e2e-log flag present?
 
