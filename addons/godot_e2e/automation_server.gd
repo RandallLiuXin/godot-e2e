@@ -73,14 +73,22 @@ func _ready() -> void:
 
 	_handler = CommandHandlerScript.new(self)
 
-	var port := Config.get_port()
 	_server = TCPServer.new()
-	var err := _server.listen(port)
-	if err != OK:
-		push_error("godot-e2e: failed to listen on port %d (error %d)" % [port, err])
-		set_process(false)
-		set_physics_process(false)
-		return
+	var port := Config.get_port()
+
+	if port == 0:
+		port = _listen_random_port()
+	else:
+		var err := _server.listen(port)
+		if err != OK:
+			push_error("godot-e2e: failed to listen on port %d (error %d)" % [port, err])
+			set_process(false)
+			set_physics_process(false)
+			return
+
+	var port_file := Config.get_port_file()
+	if port_file != "":
+		_write_port_file(port_file, port)
 
 	_state = State.LISTENING
 	_log("server listening on port %d" % port)
@@ -398,6 +406,33 @@ func _handle_disconnect() -> void:
 	_wait_type = WaitType.NONE
 	_state = State.LISTENING
 	_log("reset to LISTENING")
+
+
+# ---------------------------------------------------------------------------
+# Port helpers
+# ---------------------------------------------------------------------------
+
+func _listen_random_port() -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for i in range(100):
+		var candidate := rng.randi_range(10000, 60000)
+		if _server.listen(candidate) == OK:
+			return candidate
+	push_error("godot-e2e: failed to find a free port after 100 attempts")
+	set_process(false)
+	set_physics_process(false)
+	return -1
+
+
+func _write_port_file(path: String, port: int) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("godot-e2e: failed to write port file '%s' (error %d)" % [path, FileAccess.get_open_error()])
+		return
+	file.store_string(str(port))
+	file.close()
+	_log("wrote port %d to '%s'" % [port, path])
 
 
 # ---------------------------------------------------------------------------
