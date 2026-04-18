@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-04-18
 
+### Added
+- `.gitattributes` with `export-ignore` rules so Asset Library downloads only include the `addons/` folder (#6)
+
 ### Fixed
 - Fix plugin.cfg registration error: `automation_server.gd` was declared as EditorPlugin but extends Node. Added proper `plugin.gd` that auto-registers the AutomationServer autoload (#5)
 
