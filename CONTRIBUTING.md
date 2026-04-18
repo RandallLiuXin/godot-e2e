@@ -65,7 +65,7 @@ Thank you for your interest in contributing. This document covers everything you
    godot-e2e tests/ -v
    ```
 
-   All unit tests should pass without a running Godot instance.
+   This requires a configured Godot binary (`GODOT_PATH` env var or on `PATH`).
 
 ---
 

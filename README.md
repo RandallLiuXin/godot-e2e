@@ -178,7 +178,7 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
 ```
 
 ### macOS (GitHub Actions)
@@ -195,10 +195,10 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: /Applications/Godot.app/Contents/MacOS/Godot
+    GODOT_PATH: /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
-Set `GODOT_BIN` to override the default Godot executable path, or use `godot-e2e --godot-path /path/to/godot tests/`.
+Set `GODOT_PATH` to override the default Godot executable path, or use `godot-e2e --godot-path /path/to/godot tests/`.
 The default search order is: `GODOT_PATH` environment variable, then `godot`, `godot4`, `Godot_v4` on `PATH`.
 
 ---

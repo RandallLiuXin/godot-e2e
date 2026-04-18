@@ -66,9 +66,10 @@ class GodotLauncher:
 
         use_port_file = port == 0
         if use_port_file:
-            self._port_file = tempfile.mktemp(
+            port_file_fd, self._port_file = tempfile.mkstemp(
                 suffix=".port", prefix="godot_e2e_"
             )
+            os.close(port_file_fd)
 
         cmd = [godot_path, "--path", os.path.abspath(project_path)]
         if extra_args:

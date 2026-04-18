@@ -20,7 +20,10 @@ def main() -> None:
     filtered: list[str] = []
     i = 0
     while i < len(args):
-        if args[i] == "--godot-path" and i + 1 < len(args):
+        if args[i] == "--godot-path":
+            if i + 1 >= len(args):
+                print("error: --godot-path requires a value", file=sys.stderr)
+                raise SystemExit(2)
             godot_path = args[i + 1]
             i += 2
         elif args[i].startswith("--godot-path="):

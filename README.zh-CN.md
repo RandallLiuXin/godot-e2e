@@ -172,7 +172,7 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
 ```
 
 ### macOS（GitHub Actions）
@@ -189,7 +189,7 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: /Applications/Godot.app/Contents/MacOS/Godot
+    GODOT_PATH: /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
 通过设置 `GODOT_PATH` 环境变量可以覆盖默认的 Godot 可执行文件路径，或使用 `godot-e2e --godot-path /path/to/godot tests/`。

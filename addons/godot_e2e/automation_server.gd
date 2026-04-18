@@ -10,7 +10,7 @@ const CommandHandlerScript = preload("command_handler.gd")
 
 var _handler = null
 
-const SERVER_VERSION := "1.0.0"
+const SERVER_VERSION := "1.1.0"
 
 enum State {
 	LISTENING,
@@ -78,6 +78,8 @@ func _ready() -> void:
 
 	if port == 0:
 		port = _listen_random_port()
+		if port == -1:
+			return
 	else:
 		var err := _server.listen(port)
 		if err != OK:
