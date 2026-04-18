@@ -39,6 +39,9 @@ Changelog = "https://github.com/RandallLiuXin/godot-e2e/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
+[project.scripts]
+godot-e2e = "godot_e2e.cli:main"
+
 [project.entry-points.pytest11]
 godot_e2e = "godot_e2e.fixtures"
 
