@@ -10,5 +10,5 @@ Demonstrates how to test Godot UI elements with godot-e2e. Two scenes (Menu and 
 ## Run
 
 ```bash
-pytest tests/e2e/ -v
+godot-e2e tests/e2e/ -v
 ```

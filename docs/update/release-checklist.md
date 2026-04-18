@@ -17,10 +17,10 @@ Steps to follow when publishing a new version of godot-e2e.
 
 3. **Run all tests locally**
    ```bash
-   pytest tests/ -v
-   pytest examples/minimal/tests/e2e/ -v
-   pytest examples/platformer/tests/e2e/ -v
-   pytest examples/ui_testing/tests/e2e/ -v
+   godot-e2e tests/ -v
+   godot-e2e examples/minimal/tests/e2e/ -v
+   godot-e2e examples/platformer/tests/e2e/ -v
+   godot-e2e examples/ui_testing/tests/e2e/ -v
    ```
 
 4. **Verify the package builds**

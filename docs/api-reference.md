@@ -544,10 +544,10 @@ Launch Godot and return a connected `GodotClient` that has completed the handsha
 
 The launcher:
 1. Finds the Godot binary (from `godot_path`, `GODOT_PATH` env var, or `PATH`).
-2. Allocates a free TCP port (if `port=0`).
+2. If `port=0` (default), creates a temporary port file and passes `--e2e-port=0 --e2e-port-file=<path>` so Godot auto-selects a free port and writes it to the file.
 3. Generates a random authentication token.
-4. Starts Godot with `--e2e`, `--e2e-port=N`, `--e2e-token=X`.
-5. Polls until a TCP connection succeeds and the handshake completes.
+4. Starts Godot with `--e2e`, `--e2e-port=N`, `--e2e-token=X` (and `--e2e-port-file` when applicable).
+5. Reads the actual port from the port file (if auto-allocated), then polls until a TCP connection succeeds and the handshake completes.
 
 **Raises**:
 - `FileNotFoundError` -- if Godot cannot be located.

@@ -544,10 +544,10 @@ GodotClient(host="127.0.0.1", port=6008)
 
 启动器执行以下步骤：
 1. 查找 Godot 二进制文件（从 `godot_path`、`GODOT_PATH` 环境变量或 `PATH`）。
-2. 分配空闲 TCP 端口（如果 `port=0`）。
+2. 如果 `port=0`（默认），创建临时端口文件并传递 `--e2e-port=0 --e2e-port-file=<path>`，让 Godot 自动选择空闲端口并写入文件。
 3. 生成随机认证令牌。
-4. 以 `--e2e`、`--e2e-port=N`、`--e2e-token=X` 参数启动 Godot。
-5. 轮询直到 TCP 连接成功且握手完成。
+4. 以 `--e2e`、`--e2e-port=N`、`--e2e-token=X`（及适用时的 `--e2e-port-file`）参数启动 Godot。
+5. 从端口文件读取实际端口（如果是自动分配的），然后轮询直到 TCP 连接成功且握手完成。
 
 **异常**：
 - `FileNotFoundError` -- 无法找到 Godot。

@@ -9,5 +9,5 @@ The simplest possible godot-e2e setup. A single scene with one Label node and th
 ## Run
 
 ```bash
-pytest tests/e2e/ -v
+godot-e2e tests/e2e/ -v
 ```

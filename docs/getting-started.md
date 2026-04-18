@@ -78,7 +78,8 @@ Additional flags parsed from command-line arguments (passed after `--`):
 | Flag | Description |
 |------|-------------|
 | `--e2e` | Enable the automation server. Required. |
-| `--e2e-port=N` | TCP port to listen on (default: 6008). |
+| `--e2e-port=N` | TCP port to listen on (default: 6008). Use `0` for auto-selection. |
+| `--e2e-port-file=PATH` | Write the actual listening port to this file. Used with `--e2e-port=0` for multi-instance support. |
 | `--e2e-token=X` | Authentication token. The Python client must send this in the handshake. |
 | `--e2e-log` | Enable verbose server-side logging to stdout. |
 
@@ -155,7 +156,7 @@ Key points:
 ### Basic usage
 
 ```bash
-pytest tests/ -v
+godot-e2e tests/ -v
 ```
 
 ### Setting the Godot executable path
@@ -170,11 +171,11 @@ To set it explicitly:
 ```bash
 # Linux / macOS
 export GODOT_PATH=/usr/local/bin/godot
-pytest tests/ -v
+godot-e2e tests/ -v
 
 # Windows (PowerShell)
 $env:GODOT_PATH = "C:\godot\Godot_v4.4-stable_win64.exe"
-pytest tests/ -v
+godot-e2e tests/ -v
 ```
 
 ### Setting the project path
@@ -231,7 +232,7 @@ jobs:
         run: pip install -e .
 
       - name: Run E2E tests
-        run: xvfb-run --auto-servernum pytest tests/ -v
+        run: xvfb-run --auto-servernum godot-e2e tests/ -v
 ```
 
 ### Windows (GitHub Actions)
@@ -264,7 +265,7 @@ jobs:
         run: pip install -e .
 
       - name: Run E2E tests
-        run: pytest tests/ -v
+        run: godot-e2e tests/ -v
         env:
           GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
 ```
@@ -297,7 +298,7 @@ jobs:
         run: pip install -e .
 
       - name: Run E2E tests
-        run: pytest tests/ -v
+        run: godot-e2e tests/ -v
         env:
           GODOT_PATH: /Applications/Godot.app/Contents/MacOS/Godot
 ```

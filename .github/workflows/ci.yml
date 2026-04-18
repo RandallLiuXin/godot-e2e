@@ -66,15 +66,15 @@ jobs:
 
       - name: Run example tests (platformer)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/platformer/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/platformer/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (minimal)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/minimal/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/minimal/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (ui_testing)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest examples/ui_testing/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/ui_testing/tests/e2e/ -v --timeout=60
 
       - name: Upload test output artifacts
         if: always()
@@ -114,19 +114,19 @@ jobs:
         shell: pwsh
         run: |
           $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
-          python -m pytest examples/platformer/tests/e2e/ -v --timeout=60
+          godot-e2e examples/platformer/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (minimal)
         shell: pwsh
         run: |
           $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
-          python -m pytest examples/minimal/tests/e2e/ -v --timeout=60
+          godot-e2e examples/minimal/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (ui_testing)
         shell: pwsh
         run: |
           $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
-          python -m pytest examples/ui_testing/tests/e2e/ -v --timeout=60
+          godot-e2e examples/ui_testing/tests/e2e/ -v --timeout=60
 
       - name: Upload test output artifacts
         if: always()
