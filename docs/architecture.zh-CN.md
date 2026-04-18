@@ -30,7 +30,7 @@ godot-e2e 以两个独立进程运行，通过本地 TCP 连接通信：
 - `AutomationServer` 是一个运行 TCP 服务器的自动加载节点（Autoload）。
 - `CommandHandler` 在主线程上执行命令。
 - `JsonSerializer` 处理 Godot 类型与 JSON 之间的类型转换。
-- `Config` 从命令行参数中解析 `--e2e`、`--e2e-port`、`--e2e-token`、`--e2e-log`。
+- `Config` 从命令行参数中解析 `--e2e`、`--e2e-port`、`--e2e-port-file`、`--e2e-token`、`--e2e-log`。
 
 核心设计原则是游戏以未修改的状态运行 -- AutomationServer 自动加载节点在 `--e2e` 不存在时处于休眠状态，所有命令都在 Godot 主线程的正常游戏循环中执行。
 

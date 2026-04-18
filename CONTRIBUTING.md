@@ -62,10 +62,10 @@ Thank you for your interest in contributing. This document covers everything you
 5. **Verify the setup**
 
    ```bash
-   pytest tests/ -v
+   godot-e2e tests/ -v
    ```
 
-   All unit tests should pass without a running Godot instance.
+   This requires a configured Godot binary (`GODOT_PATH` env var or on `PATH`).
 
 ---
 
@@ -74,7 +74,7 @@ Thank you for your interest in contributing. This document covers everything you
 ### Unit and integration tests
 
 ```bash
-pytest tests/ -v
+godot-e2e tests/ -v
 ```
 
 ### Example project E2E tests
@@ -82,13 +82,13 @@ pytest tests/ -v
 These require a Godot binary and launch a real game process:
 
 ```bash
-pytest examples/platformer/tests/e2e/ -v
+godot-e2e examples/platformer/tests/e2e/ -v
 ```
 
 ### Run a specific test file
 
 ```bash
-pytest tests/test_client.py -v
+godot-e2e tests/test_client.py -v
 ```
 
 ### Useful pytest flags

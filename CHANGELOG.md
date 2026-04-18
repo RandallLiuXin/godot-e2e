@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-04-18
+
+### Fixed
+- Fix plugin.cfg registration error: `automation_server.gd` was declared as EditorPlugin but extends Node. Added proper `plugin.gd` that auto-registers the AutomationServer autoload (#5)
+
+### Added
+- Dynamic port allocation: `--e2e-port=0` with `--e2e-port-file=<path>` lets Godot pick a random free port and write it to a file, enabling multiple E2E instances in parallel (#5)
+- `godot-e2e` CLI command: thin wrapper over pytest with `--godot-path` support. `pip install godot-e2e` now provides the `godot-e2e` command (#5)
+
+### Changed
+- Installation: users now enable the GodotE2E plugin in Project Settings instead of manually adding an autoload (#5)
+- Documentation: all user-facing examples updated from `pytest` to `godot-e2e` CLI (#5)
+- CI workflow: example tests use `godot-e2e`, unit tests keep `python -m pytest` (#5)
+
 ## [1.0.0] - 2026-04-16
 
 ### Added
@@ -29,4 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: getting started, API reference, architecture, testing patterns
 - GitHub Actions CI for Linux and Windows
 
+[Unreleased]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/RandallLiuXin/godot-e2e/releases/tag/v1.0.0

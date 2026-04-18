@@ -7,6 +7,7 @@ import secrets
 import shutil
 import socket
 import subprocess
+import tempfile
 import time
 from typing import List, Optional
 
@@ -23,6 +24,7 @@ class GodotLauncher:
         self.port: Optional[int] = None
         self.token: Optional[str] = None
         self.client: Optional[GodotClient] = None
+        self._port_file: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -60,12 +62,14 @@ class GodotLauncher:
                 within *timeout* seconds.
         """
         godot_path = godot_path or self._find_godot()
-
-        if port == 0:
-            port = self._get_free_port()
-        self.port = port
-
         self.token = secrets.token_hex(16)
+
+        use_port_file = port == 0
+        if use_port_file:
+            port_file_fd, self._port_file = tempfile.mkstemp(
+                suffix=".port", prefix="godot_e2e_"
+            )
+            os.close(port_file_fd)
 
         cmd = [godot_path, "--path", os.path.abspath(project_path)]
         if extra_args:
@@ -76,6 +80,8 @@ class GodotLauncher:
             f"--e2e-port={port}",
             f"--e2e-token={self.token}",
         ])
+        if self._port_file:
+            cmd.append(f"--e2e-port-file={self._port_file}")
 
         self.process = subprocess.Popen(
             cmd,
@@ -83,13 +89,16 @@ class GodotLauncher:
             stderr=subprocess.DEVNULL,
         )
 
+        deadline = time.monotonic() + timeout
+
+        if use_port_file:
+            port = self._poll_port_file(deadline)
+        self.port = port
+
         self.client = GodotClient("127.0.0.1", port)
 
-        deadline = time.monotonic() + timeout
         last_error: Optional[Exception] = None
-
         while time.monotonic() < deadline:
-            # If Godot already exited, report why.
             if self.process.poll() is not None:
                 raise RuntimeError(
                     f"Godot process exited with code {self.process.returncode}"
@@ -129,9 +138,41 @@ class GodotLauncher:
                 self.process.wait()
             self.process = None
 
+        self._cleanup_port_file()
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _poll_port_file(self, deadline: float) -> int:
+        """Poll for the port file written by Godot and return the port."""
+        while time.monotonic() < deadline:
+            if self.process.poll() is not None:
+                raise RuntimeError(
+                    f"Godot process exited with code {self.process.returncode}"
+                )
+            if self._port_file and os.path.exists(self._port_file):
+                content = ""
+                try:
+                    with open(self._port_file, "r") as f:
+                        content = f.read().strip()
+                except OSError:
+                    pass
+                if content and content.isdigit():
+                    return int(content)
+            time.sleep(0.1)
+        raise ConnectionError(
+            "Godot did not write a port file within the timeout period"
+        )
+
+    def _cleanup_port_file(self) -> None:
+        """Remove the temporary port file if it exists."""
+        if self._port_file:
+            try:
+                os.unlink(self._port_file)
+            except OSError:
+                pass
+            self._port_file = None
 
     @staticmethod
     def _get_free_port() -> int:

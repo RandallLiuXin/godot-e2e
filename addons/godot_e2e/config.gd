@@ -4,7 +4,8 @@
 ## Usage:
 ##   var cfg = preload("config.gd")
 ##   cfg.is_enabled()   # --e2e flag present?
-##   cfg.get_port()     # --e2e-port=N (default 6008)
+##   cfg.get_port()     # --e2e-port=N (default 6008, 0 = auto)
+##   cfg.get_port_file()# --e2e-port-file=PATH (write actual port here)
 ##   cfg.get_token()    # --e2e-token=X
 ##   cfg.is_logging()   # --e2e-log flag present?
 
@@ -17,6 +18,7 @@ static var _enabled: bool = false
 static var _port: int = DEFAULT_PORT
 static var _token: String = ""
 static var _logging: bool = false
+static var _port_file: String = ""
 
 
 static func _ensure_parsed() -> void:
@@ -39,6 +41,8 @@ static func _ensure_parsed() -> void:
 				_port = DEFAULT_PORT
 		elif arg.begins_with("--e2e-token="):
 			_token = arg.substr("--e2e-token=".length())
+		elif arg.begins_with("--e2e-port-file="):
+			_port_file = arg.substr("--e2e-port-file=".length())
 
 
 static func is_enabled() -> bool:
@@ -54,6 +58,11 @@ static func get_port() -> int:
 static func get_token() -> String:
 	_ensure_parsed()
 	return _token
+
+
+static func get_port_file() -> String:
+	_ensure_parsed()
+	return _port_file
 
 
 static func is_logging() -> bool:

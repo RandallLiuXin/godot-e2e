@@ -30,7 +30,7 @@ godot-e2e runs as two separate processes communicating over a local TCP connecti
 - `AutomationServer` is an Autoload node that runs a TCP server.
 - `CommandHandler` executes commands on the main thread.
 - `JsonSerializer` handles type conversion between Godot types and JSON.
-- `Config` parses `--e2e`, `--e2e-port`, `--e2e-token`, `--e2e-log` from command-line args.
+- `Config` parses `--e2e`, `--e2e-port`, `--e2e-port-file`, `--e2e-token`, `--e2e-log` from command-line args.
 
 The key design principle is that the game runs unmodified -- the AutomationServer Autoload is dormant unless `--e2e` is present, and all commands execute on Godot's main thread within the normal game loop.
 
