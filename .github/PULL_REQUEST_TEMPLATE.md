@@ -24,4 +24,5 @@
 - [ ] Code follows project conventions
 - [ ] No hardcoded paths or platform-specific assumptions
 - [ ] Documentation updated (if applicable)
-- [ ] CHANGELOG.md updated (if user-facing change)
+- [ ] `docs/update/next.md` updated with change entry
+- [ ] CHANGELOG.md updated (if releasing)
