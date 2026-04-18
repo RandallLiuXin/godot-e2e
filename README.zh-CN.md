@@ -16,12 +16,10 @@
 
 **1. 安装插件**
 
-将 `addons/godot_e2e/` 复制到你的 Godot 项目的 `addons/` 目录中。在项目设置中将 `AutomationServer` 添加为自动加载节点（Autoload）：
+将 `addons/godot_e2e/` 复制到你的 Godot 项目的 `addons/` 目录中，然后在
+**项目 > 项目设置 > 插件** 中启用 **GodotE2E** 插件。这会自动注册 `AutomationServer` 自动加载节点。
 
-- 路径：`*res://addons/godot_e2e/automation_server.gd`
-- 名称：`AutomationServer`
-
-`*` 前缀表示直接使用脚本（而非场景文件）。该服务器在游戏未携带 `--e2e` 标志启动时完全处于休眠状态，因此对生产构建没有任何影响。
+该服务器在游戏未携带 `--e2e` 标志启动时完全处于休眠状态，因此对生产构建没有任何影响。
 
 **2. 安装 Python 包**
 
@@ -51,7 +49,7 @@ def test_player_moves(game):
 运行：
 
 ```bash
-pytest tests/ -v
+godot-e2e tests/ -v
 ```
 
 ---
@@ -77,7 +75,9 @@ pytest tests/ -v
 1. **Python（pytest）** -- 发送 JSON 编码的命令并等待响应
 2. **Godot（AutomationServer）** -- 一个自动加载节点，监听 TCP 端口，在主线程上执行命令并返回结果
 
-`AutomationServer` 仅在游戏以 `--e2e` 标志启动时才会打开套接字（Socket）（可选配合 `--e2e-port <port>`）。在正常运行或未携带该标志的导出构建中，自动加载节点不做任何操作。
+`AutomationServer` 仅在游戏以 `--e2e` 标志启动时才会打开套接字（Socket）（可选配合 `--e2e-port=<port>`）。
+使用 `--e2e-port=0` 配合 `--e2e-port-file=<path>` 时，服务器会自动选择可用端口并将端口号写入指定文件，
+从而支持多实例并行运行。在正常运行或未携带该标志的导出构建中，自动加载节点不做任何操作。
 
 ```
 pytest ──── TCP (localhost) ──── AutomationServer (Godot Autoload)
@@ -155,7 +155,7 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    xvfb-run --auto-servernum pytest tests/e2e/ -v
+    xvfb-run --auto-servernum godot-e2e tests/e2e/ -v
 ```
 
 ### Windows（GitHub Actions）
@@ -170,9 +170,9 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    pytest tests/e2e/ -v
+    godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
 ```
 
 ### macOS（GitHub Actions）
@@ -187,12 +187,13 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    pytest tests/e2e/ -v
+    godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: /Applications/Godot.app/Contents/MacOS/Godot
+    GODOT_PATH: /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
-通过设置 `GODOT_BIN` 可以覆盖默认的 Godot 可执行文件路径。默认搜索顺序为：`godot4`、`godot`，然后是各平台的标准安装位置。
+通过设置 `GODOT_PATH` 环境变量可以覆盖默认的 Godot 可执行文件路径，或使用 `godot-e2e --godot-path /path/to/godot tests/`。
+默认搜索顺序为：`GODOT_PATH` 环境变量，然后在 `PATH` 中查找 `godot`、`godot4`、`Godot_v4`。
 
 ---
 
@@ -202,7 +203,8 @@ def game_session():
 
 | 方法 | 说明 |
 |---|---|
-| `GodotE2E.launch(project_path, **kwargs)` | 上下文管理器。启动 Godot 并返回已连接的 `GodotE2E` 实例。 |
+| `GodotE2E.launch(project_path, **kwargs)` | 上下文管理器。启动 Godot 并返回已连接的 `GodotE2E` 实例。传入 `port=0`（默认）自动分配空闲端口。 |
+| `GodotE2E.connect(host, port, token)` | 连接到已运行的、启用了 `--e2e` 标志的 Godot 实例。 |
 | `game.close()` | 终止 Godot 进程并关闭连接。 |
 
 ### 节点操作
@@ -260,7 +262,7 @@ def game_session():
 
 ```bash
 cd examples/minimal
-pytest tests/e2e/ -v
+godot-e2e tests/e2e/ -v
 ```
 
 ---

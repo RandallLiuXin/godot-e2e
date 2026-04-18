@@ -22,7 +22,7 @@ from .types import (
 from .client import GodotClient
 from .launcher import GodotLauncher
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "GodotE2E",

@@ -16,14 +16,12 @@ Out-of-process E2E testing tool for Godot
 
 **1. Install the addon**
 
-Copy `addons/godot_e2e/` into your Godot project's `addons/` directory. Add `AutomationServer`
-as an Autoload in your project settings:
+Copy `addons/godot_e2e/` into your Godot project's `addons/` directory, then enable the
+**GodotE2E** plugin in **Project > Project Settings > Plugins**. This automatically registers
+the `AutomationServer` autoload.
 
-- Path: `*res://addons/godot_e2e/automation_server.gd`
-- Name: `AutomationServer`
-
-The `*` prefix means the script is used directly (not a scene). The server is completely dormant
-unless the game is launched with the `--e2e` flag, so it has no effect in production builds.
+The server is completely dormant unless the game is launched with the `--e2e` flag, so it has
+no effect in production builds.
 
 **2. Install the Python package**
 
@@ -53,7 +51,7 @@ def test_player_moves(game):
 Run:
 
 ```bash
-pytest tests/ -v
+godot-e2e tests/ -v
 ```
 
 ---
@@ -81,8 +79,10 @@ Two processes communicate over a local TCP connection:
    the main thread, and sends back results
 
 The `AutomationServer` only opens its socket when the game is started with `--e2e` (and
-optionally `--e2e-port <port>`). In normal play or exported builds without that flag, the autoload
-does nothing.
+optionally `--e2e-port=<port>`). When `--e2e-port=0` is used with `--e2e-port-file=<path>`, the
+server picks a random available port and writes it to the given file — this enables running
+multiple instances in parallel. In normal play or exported builds without the `--e2e` flag, the
+autoload does nothing.
 
 ```
 pytest ──── TCP (localhost) ──── AutomationServer (Godot Autoload)
@@ -161,7 +161,7 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    xvfb-run --auto-servernum pytest tests/e2e/ -v
+    xvfb-run --auto-servernum godot-e2e tests/e2e/ -v
 ```
 
 ### Windows (GitHub Actions)
@@ -176,9 +176,9 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    pytest tests/e2e/ -v
+    godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
 ```
 
 ### macOS (GitHub Actions)
@@ -193,13 +193,13 @@ def game_session():
 - name: Run E2E tests
   run: |
     pip install -e .
-    pytest tests/e2e/ -v
+    godot-e2e tests/e2e/ -v
   env:
-    GODOT_BIN: /Applications/Godot.app/Contents/MacOS/Godot
+    GODOT_PATH: /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
-Set `GODOT_BIN` to override the default Godot executable path. The default search order is:
-`godot4`, `godot`, then platform-specific standard locations.
+Set `GODOT_PATH` to override the default Godot executable path, or use `godot-e2e --godot-path /path/to/godot tests/`.
+The default search order is: `GODOT_PATH` environment variable, then `godot`, `godot4`, `Godot_v4` on `PATH`.
 
 ---
 
@@ -209,7 +209,8 @@ Set `GODOT_BIN` to override the default Godot executable path. The default searc
 
 | Method | Description |
 |---|---|
-| `GodotE2E.launch(project_path, **kwargs)` | Context manager. Launches Godot and returns a connected `GodotE2E` instance. |
+| `GodotE2E.launch(project_path, **kwargs)` | Context manager. Launches Godot and returns a connected `GodotE2E` instance. Pass `port=0` (default) to auto-allocate a free port. |
+| `GodotE2E.connect(host, port, token)` | Connect to an already-running Godot instance with the `--e2e` flag. |
 | `game.close()` | Terminate the Godot process and close the connection. |
 
 ### Node Operations
@@ -267,7 +268,7 @@ Run any example:
 
 ```bash
 cd examples/minimal
-pytest tests/e2e/ -v
+godot-e2e tests/e2e/ -v
 ```
 
 ---
