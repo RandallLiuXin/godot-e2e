@@ -1,0 +1,22 @@
+# Gitleaks configuration for godot-e2e
+# https://github.com/gitleaks-io/gitleaks
+#
+# This file currently exists as a baseline. CI does not yet run gitleaks;
+# when it does, it should pick up this configuration automatically.
+
+title = "godot-e2e gitleaks config"
+
+[extend]
+# Use the default gitleaks rules as baseline
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''docs/internal/''',
+    '''\.pytest_cache/''',
+    '''__pycache__/''',
+    '''\.godot/''',
+    '''dist/''',
+    '''site/''',
+]

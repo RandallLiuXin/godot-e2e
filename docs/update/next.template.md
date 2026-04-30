@@ -17,8 +17,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
-- Repo-meta baseline: `ROADMAP.md` (+ zh-CN), `docs/versioning.md` (+ zh-CN), `docs/internal/decisions/` ADR directory with three initial entries (wire protocol, sync API, rejection of test event bus), `docs/internal/design/` placeholder, `.gitleaks.toml` config, `docs/update/next.template.md`. — @LiuXin
-
 ## Changed
 
 ## Fixed

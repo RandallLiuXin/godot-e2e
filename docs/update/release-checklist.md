@@ -7,7 +7,7 @@ Steps to follow when publishing a new version of godot-e2e.
 1. **Finalize `docs/update/next.md`**
    - Review all entries, fix typos, group by category
    - Rename `next.md` to `vX.Y.Z.md` (e.g., `v0.2.0.md`) as a permanent archive
-   - Create a new empty `next.md` from the template below
+   - Create a new empty `next.md` by copying `docs/update/next.template.md`
 
 2. **Update version numbers**
    - `pyproject.toml` — update `version = "X.Y.Z"`
