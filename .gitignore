@@ -33,3 +33,6 @@ credentials.json
 *.swo
 *~
 .DS_Store
+
+# Internal-only docs (ADRs, design notes, lessons) — kept locally, not published
+docs/internal/
