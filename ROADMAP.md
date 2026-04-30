@@ -108,6 +108,47 @@ can read to identify the failing step without re-running the test.
 
 ---
 
+## 5. Hit-test actionability / occlusion detection
+
+**Pain:** Task 1's actionability check only verifies the target node's own
+state (`is_visible_in_tree`, `mouse_filter`, viewport rect). It cannot tell
+whether a click would actually reach the target — modal popups, overlapping
+sibling Controls, and ancestors with `mouse_filter = STOP` can all silently
+swallow the event. Tests pass while the click went somewhere else.
+
+**Approach (firm constraint):** delegate to Godot's own GUI dispatcher
+rather than reimplementing hit-test in GDScript. The engine's rules
+(`CanvasLayer`, `top_level`, `clip_contents`, `mouse_filter` cascade,
+transparent regions, nested viewports) evolve across versions; any
+GDScript reimplementation is guaranteed to drift.
+
+**In scope**
+- A position-based hit query that delegates to engine state (likely:
+  inject `InputEventMouseMotion` at the target position and read the
+  resulting hovered Control via `Viewport.gui_get_hovered_control()` or
+  whatever public position-query API the then-current Godot exposes).
+- An `occluded_by` field in actionability errors naming what blocked the
+  click.
+- `force=True` opt-out on Locator actions to skip the check.
+- Documented side effects: injected motion fires `mouse_entered` /
+  `_gui_input` on whatever it crosses. Document, do not hide.
+
+**Out of scope**
+- Manual GDScript hit-test traversal (rejected — see Approach).
+- Hit-testing for `Node2D` / `Node3D` (different problem; user-space
+  `Area2D` / `Area3D` are the right tool for those).
+
+**Depends on:** task 1 (Locator). Should not start until task 1 has
+shipped and real authoring sessions have surfaced the actual occlusion
+patterns we need to handle — premature hardening here would lock in
+guesses.
+
+**Acceptance:** a test that clicks a Locator covered by a modal popup
+fails with a message naming the occluder, instead of silently passing
+because the click reached the modal.
+
+---
+
 ## Considered and rejected
 
 - **Test event bus / signal-emit-from-test.** Bypasses input simulation,

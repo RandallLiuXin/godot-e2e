@@ -89,6 +89,28 @@ godot-e2e 的计划工作，按优先级和依赖关系排序。
 
 ---
 
+## 5. Hit-test 可操作性 / 遮挡检测
+
+**痛点：** 任务 1 的 actionability 检查只验证目标节点自身的状态（`is_visible_in_tree`、`mouse_filter`、viewport rect），无法判断点击是否真的能落在目标上——modal 弹窗、相互重叠的兄弟 Control、`mouse_filter = STOP` 的祖先都可能静默吞掉事件。测试通过了，点击实际上落到了别处。
+
+**方法（硬性约束）：** 委托给 Godot 自己的 GUI dispatcher，不要在 GDScript 里重写 hit-test。引擎的规则（`CanvasLayer`、`top_level`、`clip_contents`、`mouse_filter` 级联、透明区域、嵌套 viewport）跨版本演进；任何 GDScript 重写一定会偏离。
+
+**范围内**
+- 基于位置的命中查询，委托给引擎状态（可能方案：在目标位置注入 `InputEventMouseMotion`，然后通过 `Viewport.gui_get_hovered_control()` 或彼时 Godot 暴露的位置查询 API 读取实际命中的 Control）。
+- actionability 错误中包含 `occluded_by` 字段，指出遮挡者。
+- Locator action 上提供 `force=True` 选项跳过检查。
+- 文档明确副作用：注入的 motion 事件会在经过的控件上触发 `mouse_entered` / `_gui_input`。明示，不隐藏。
+
+**范围外**
+- 在 GDScript 中手写 hit-test 遍历（已拒绝——见方法说明）。
+- 对 `Node2D` / `Node3D` 的 hit-test（不同问题；用户空间用 `Area2D` / `Area3D` 解决）。
+
+**依赖：** 任务 1（Locator）。应等任务 1 发布、真实编写场景暴露出实际需要处理的遮挡模式后再开始——过早设计会把猜测固化。
+
+**验收：** 一个被 modal 弹窗覆盖的 Locator 被点击时，测试以指出遮挡者的明确消息失败，而不是因为点击落到 modal 上而静默通过。
+
+---
+
 ## 已考虑并拒绝的方案
 
 - **测试事件总线 / 由测试发起信号触发。** 绕过输入模拟，破坏端到端保证。仅通过信号发射可测的行为，可以在用户实际触发入口（按钮、菜单项）已损坏的情况下通过——这是 e2e 工具不该产生的假阳性结果。需要白盒触发的测试可以使用 `call_method`，那是显式 opt-out e2e 语义的入口。
