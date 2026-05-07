@@ -12,6 +12,7 @@ import time
 from typing import List, Optional
 
 from .client import GodotClient
+from .types import LogVerbosity
 
 
 class GodotLauncher:
@@ -37,6 +38,7 @@ class GodotLauncher:
         port: int = 0,
         timeout: float = 10.0,
         extra_args: Optional[List[str]] = None,
+        log_verbosity: Optional[str] = None,
     ) -> GodotClient:
         """Launch Godot and return a connected :class:`GodotClient`.
 
@@ -49,7 +51,13 @@ class GodotLauncher:
                 auto-allocate a free port.
             timeout: Seconds to wait for the connection to succeed.
             extra_args: Additional command-line arguments forwarded to
-                the Godot process.
+                the Godot process (placed before the ``--`` user-args
+                separator, so these are interpreted by Godot itself).
+            log_verbosity: Engine log capture verbosity at startup
+                (``"error"`` / ``"warning"`` / ``"info"``). When *None*,
+                the addon's own default (``"warning"``) applies. Can
+                also be adjusted at runtime via
+                :meth:`GodotE2E.set_log_verbosity`.
 
         Returns:
             A :class:`GodotClient` that has already completed the
@@ -61,6 +69,19 @@ class GodotLauncher:
             ConnectionError: if the connection cannot be established
                 within *timeout* seconds.
         """
+        # Validate log_verbosity at the Python boundary so a typo fails
+        # immediately with a clear ValueError, instead of being silently
+        # swallowed by config.gd's startup-time fallback. Runtime
+        # set_log_verbosity already rejects invalid values; the launch
+        # entry point should match that contract.
+        if log_verbosity is not None:
+            valid = {v.value for v in LogVerbosity}
+            if log_verbosity not in valid:
+                raise ValueError(
+                    f"log_verbosity must be one of {sorted(valid)}, got "
+                    f"{log_verbosity!r}"
+                )
+
         godot_path = godot_path or self._find_godot()
         self.token = secrets.token_hex(16)
 
@@ -82,6 +103,8 @@ class GodotLauncher:
         ])
         if self._port_file:
             cmd.append(f"--e2e-port-file={self._port_file}")
+        if log_verbosity:
+            cmd.append(f"--e2e-log-verbosity={log_verbosity}")
 
         self.process = subprocess.Popen(
             cmd,

@@ -6,12 +6,14 @@ import json
 import socket
 import struct
 import threading
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .types import (
     CommandError,
     ConnectionLostError,
+    LogEntry,
     NodeNotFoundError,
+    parse_log_entries,
 )
 
 
@@ -29,6 +31,21 @@ class GodotClient:
         self._recv_buffer: bytes = b""
         self._next_id: int = 1
         self._lock = threading.Lock()
+        # Engine log capture state. ``last_logs`` is the slice from the most
+        # recent response; ``collected_logs`` accumulates across the whole
+        # test (the pytest plugin resets it per-test).
+        self.last_logs: List[LogEntry] = []
+        self.collected_logs: List[LogEntry] = []
+
+    # ------------------------------------------------------------------
+    # Log capture API
+    # ------------------------------------------------------------------
+
+    def reset_collected_logs(self) -> None:
+        """Discard all entries in ``collected_logs``. Called by the pytest
+        plugin at the start of each test so logs don't leak across tests."""
+        self.collected_logs = []
+        self.last_logs = []
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -87,12 +104,32 @@ class GodotClient:
 
             response = self._read_response()
 
+            # Strip log metadata before exposing the response to callers.
+            # last_logs holds the delta for this response; collected_logs
+            # accumulates until the test boundary resets it. The dropped
+            # marker is appended to ``entries`` itself so all three exits
+            # — last_logs, collected_logs, and exc.logs on the error path
+            # — surface buffer-overflow events uniformly.
+            logs_raw = response.pop("_logs", None) or []
+            dropped = int(response.pop("_logs_dropped", 0) or 0)
+            entries = parse_log_entries(logs_raw)
+            if dropped > 0:
+                entries.append(LogEntry(
+                    level="warning",
+                    message=f"<{dropped} log entries dropped due to capture buffer overflow>",
+                ))
+            self.last_logs = entries
+            self.collected_logs.extend(entries)
+
             if "error" in response:
                 error_code = response["error"]
                 error_msg = response.get("message", error_code)
                 if "not found" in error_msg.lower() or "not found" in error_code.lower():
-                    raise NodeNotFoundError(error_msg)
-                raise CommandError(error_msg)
+                    exc = NodeNotFoundError(error_msg)
+                else:
+                    exc = CommandError(error_msg)
+                exc.logs = entries
+                raise exc
 
             return response
 

@@ -23,12 +23,22 @@ class GodotE2E:
 
     @classmethod
     def launch(cls, project_path: str, godot_path: str = None,
-               port: int = 0, timeout: float = 10.0, extra_args: list = None):
+               port: int = 0, timeout: float = 10.0, extra_args: list = None,
+               log_verbosity: str = None):
         """Launch Godot and return a connected GodotE2E instance.
+
+        ``log_verbosity`` (one of ``"error"`` / ``"warning"`` / ``"info"``)
+        sets the engine log capture level at startup. When *None*, the
+        addon default (``"warning"``) applies. See
+        :meth:`set_log_verbosity` for adjusting it at runtime.
+
         Returns a context manager."""
         from .launcher import GodotLauncher
         launcher = GodotLauncher()
-        client = launcher.launch(project_path, godot_path, port, timeout, extra_args)
+        client = launcher.launch(
+            project_path, godot_path, port, timeout, extra_args,
+            log_verbosity=log_verbosity,
+        )
         return cls(client, launcher)
 
     @classmethod
@@ -249,6 +259,54 @@ class GodotE2E:
         """Capture a screenshot. Returns the absolute path to the saved PNG."""
         resp = self._client.send_command("screenshot", save_path=save_path)
         return resp.get("path", "")
+
+    # --- Engine log capture ---
+
+    @property
+    def last_logs(self):
+        """Engine log entries captured during the most recent command call."""
+        return self._client.last_logs
+
+    @property
+    def collected_logs(self):
+        """All engine log entries captured since the last reset.
+
+        The pytest plugin clears this at the start of every test, so under
+        the standard ``game`` / ``game_fresh`` fixtures the list reflects
+        only the logs produced by the current test.
+        """
+        return self._client.collected_logs
+
+    def reset_collected_logs(self):
+        """Discard all entries in ``collected_logs`` and ``last_logs``."""
+        self._client.reset_collected_logs()
+
+    def set_log_verbosity(self, level: str):
+        """Adjust engine log capture verbosity at runtime.
+
+        ``level`` is one of ``"error"``, ``"warning"``, ``"info"``. The
+        default at server startup comes from the ``--e2e-log-verbosity``
+        launch flag (default ``"warning"``) — call this to override it
+        within a single test (e.g. raise to ``"info"`` to also capture
+        ``print()`` output).
+        """
+        self._client.send_command("set_log_verbosity", level=level)
+
+    def set_log_buffer_size(self, size: int):
+        """Resize the engine log capture ring buffer at runtime.
+
+        The default of 200 is sized for typical test runs; raise it for
+        debug sessions on high-error-density games where entries are
+        being dropped between drains, or shrink it (and trigger an
+        overflow on purpose) when validating capture-overflow handling.
+
+        ``size`` must be a positive integer; ``ValueError`` is raised at
+        the Python boundary for ``size < 1``, matching the runtime
+        contract on the wire side.
+        """
+        if not isinstance(size, int) or size < 1:
+            raise ValueError(f"size must be a positive int, got {size!r}")
+        self._client.send_command("set_log_buffer_size", size=size)
 
     # --- Misc ---
 

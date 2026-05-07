@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
+from typing import List
 
 
 # ---------------------------------------------------------------------------
@@ -145,11 +147,76 @@ def serialize(value):
 
 
 # ---------------------------------------------------------------------------
+# Engine log capture
+# ---------------------------------------------------------------------------
+
+class LogVerbosity(str, Enum):
+    """Verbosity levels for engine log capture, matching the server-side names."""
+    ERROR = "error"
+    WARNING = "warning"
+    INFO = "info"
+
+
+@dataclass
+class LogEntry:
+    """A single log line captured from the running Godot process.
+
+    ``level`` is one of: ``error`` (push_error / runtime / shader / generic
+    error), ``warning`` (push_warning), ``info`` (print() at info verbosity),
+    ``stderr`` (printerr() at info verbosity).
+
+    ``function`` / ``file`` / ``line`` are populated only for engine errors
+    (``_log_error`` callback); they're empty for ``info`` / ``stderr`` entries.
+    """
+    level: str
+    message: str
+    function: str = ""
+    file: str = ""
+    line: int = 0
+
+    def __str__(self) -> str:
+        prefix = f"[{self.level.upper()}]"
+        if self.file and self.line > 0:
+            loc = f" ({self.file}:{self.line})"
+        elif self.function:
+            loc = f" (in {self.function})"
+        else:
+            loc = ""
+        return f"{prefix} {self.message}{loc}"
+
+
+def parse_log_entries(raw: list) -> List[LogEntry]:
+    """Convert the raw ``_logs`` array from a wire response into LogEntry objects."""
+    out: List[LogEntry] = []
+    for e in raw:
+        if not isinstance(e, dict):
+            continue
+        out.append(LogEntry(
+            level=e.get("level", "info"),
+            message=e.get("message", ""),
+            function=e.get("function", ""),
+            file=e.get("file", ""),
+            line=int(e.get("line", 0) or 0),
+        ))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Exception classes
 # ---------------------------------------------------------------------------
 
 class GodotE2EError(Exception):
-    """Base exception for all godot-e2e errors."""
+    """Base exception for all godot-e2e errors.
+
+    The ``logs`` attribute holds engine log entries captured during the
+    failing command (when log capture is active). Set by GodotClient after
+    construction; defaults to an empty list so subclasses don't need to
+    thread the parameter through their own ``__init__``.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logs: List[LogEntry] = []
 
 
 class NodeNotFoundError(GodotE2EError):
