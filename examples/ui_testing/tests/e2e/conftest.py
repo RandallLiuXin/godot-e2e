@@ -32,6 +32,10 @@ def _game_process():
 
 @pytest.fixture(scope="function")
 def game(_game_process):
+    # Discard any logs accumulated during the previous test (or fixture
+    # setup) before driving this one — keeps each test's collected_logs
+    # focused on its own activity.
+    _game_process.reset_collected_logs()
     current_scene = _game_process.get_scene()
     if not current_scene.endswith("menu.tscn"):
         _game_process.change_scene("res://menu.tscn")
