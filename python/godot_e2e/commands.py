@@ -81,6 +81,31 @@ class GodotE2E:
         resp = self._client.send_command("query_nodes", pattern=pattern, group=group)
         return resp.get("nodes", [])
 
+    # --- Locator (multi-strategy lazy reference) ---
+
+    def locator(self, **kwargs):
+        """Build a :class:`Locator` for the given query.
+
+        Supported keywords (all AND-composed): ``path``, ``name``,
+        ``group``, ``text``, ``script``, ``type``. ``name`` and ``text``
+        switch to glob matching when the value contains ``*`` or ``?``.
+        ``type`` matches via instanceof, so ``type="BaseButton"`` covers
+        ``Button``, ``CheckBox``, ``OptionButton``, etc.
+        """
+        from .locator import Locator, _build_query
+        return Locator(self._client, _build_query(kwargs))
+
+    def get_by_text(self, text: str):
+        """Sugar for ``locator(text=text)``."""
+        return self.locator(text=text)
+
+    def get_by_button(self, text: str):
+        """Sugar for any clickable button (``BaseButton`` family) with the
+        given text. Covers ``Button``, ``CheckBox``, ``OptionButton``,
+        ``MenuButton``, ``LinkButton``.
+        """
+        return self.locator(type="BaseButton", text=text)
+
     def get_tree(self, path: str = "/root", depth: int = 4) -> dict:
         resp = self._client.send_command("get_tree", path=path, depth=depth)
         return resp.get("tree", {})

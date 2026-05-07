@@ -1,5 +1,7 @@
 const JsonSerializer = preload("json_serializer.gd")
 
+const VALID_QUERY_BY: Array = ["path", "name", "group", "text", "script", "type"]
+
 var _server
 
 
@@ -24,6 +26,10 @@ func execute(cmd: Dictionary) -> Dictionary:
 			return _cmd_find_by_group(cmd, id)
 		"query_nodes":
 			return _cmd_query_nodes(cmd, id)
+		"find_nodes":
+			return _cmd_find_nodes(cmd, id)
+		"node_actionable":
+			return _cmd_node_actionable(cmd, id)
 		"get_tree":
 			return _cmd_get_tree(cmd, id)
 		"batch":
@@ -38,6 +44,8 @@ func execute(cmd: Dictionary) -> Dictionary:
 			return _cmd_input_mouse_motion(cmd, id)
 		"click_node":
 			return _cmd_click_node(cmd, id)
+		"hover_node":
+			return _cmd_hover_node(cmd, id)
 		"wait_process_frames":
 			return _cmd_wait_process_frames(cmd, id)
 		"wait_physics_frames":
@@ -151,6 +159,161 @@ func _walk_tree_match(node: Node, pattern: String, results: Array) -> void:
 		results.append(str(node.get_path()))
 	for child in node.get_children():
 		_walk_tree_match(child, pattern, results)
+
+
+# ---------------------------------------------------------------------------
+# find_nodes — multi-strategy structured query (used by Locator)
+# ---------------------------------------------------------------------------
+
+func _cmd_find_nodes(cmd: Dictionary, id) -> Dictionary:
+	var query: Dictionary = cmd.get("query", {})
+	if query.is_empty():
+		return {"id": id, "error": "Empty query"}
+
+	var start_path: String = cmd.get("start_path", "/root")
+	var start_node = _server.get_tree().root.get_node_or_null(start_path)
+	if start_node == null:
+		return {"id": id, "error": "Start node not found: " + start_path}
+
+	var predicates: Array = []
+	predicates.append({"by": query.get("by", ""), "value": query.get("value", "")})
+	for f in query.get("filters", []):
+		predicates.append({"by": f.get("by", ""), "value": f.get("value", "")})
+
+	for p in predicates:
+		if not (p["by"] in VALID_QUERY_BY):
+			return {"id": id, "error": "Unknown predicate 'by': " + str(p["by"])}
+
+	var results: Array = []
+	if not _try_seeded_walk(start_node, predicates, results):
+		_walk_subtree(start_node, predicates, results)
+
+	return {"id": id, "nodes": results}
+
+
+# Look for path/group predicates we can use as a fast seed instead of walking
+# the whole subtree. Returns true if a seed was used (results filled in place).
+func _try_seeded_walk(start_node: Node, predicates: Array, results: Array) -> bool:
+	for p in predicates:
+		if p["by"] == "path":
+			var target = _server.get_tree().root.get_node_or_null(String(p["value"]))
+			if target != null \
+					and _is_descendant_or_self(target, start_node) \
+					and _matches_all(target, predicates):
+				results.append(str(target.get_path()))
+			return true
+		if p["by"] == "group":
+			var members: Array = _server.get_tree().get_nodes_in_group(String(p["value"]))
+			for n in members:
+				if _is_descendant_or_self(n, start_node) and _matches_all(n, predicates):
+					results.append(str(n.get_path()))
+			return true
+	return false
+
+
+func _walk_subtree(node: Node, predicates: Array, results: Array) -> void:
+	if _matches_all(node, predicates):
+		results.append(str(node.get_path()))
+	for child in node.get_children():
+		_walk_subtree(child, predicates, results)
+
+
+func _is_descendant_or_self(node: Node, ancestor: Node) -> bool:
+	var n = node
+	while n != null:
+		if n == ancestor:
+			return true
+		n = n.get_parent()
+	return false
+
+
+func _matches_all(node: Node, predicates: Array) -> bool:
+	for p in predicates:
+		if not _matches_predicate(node, p["by"], p["value"]):
+			return false
+	return true
+
+
+func _matches_predicate(node: Node, by: String, value) -> bool:
+	var s_value: String = String(value)
+	var result: bool = false
+	match by:
+		"path":
+			result = str(node.get_path()) == s_value
+		"name":
+			result = _str_match_or_eq(String(node.name), s_value)
+		"group":
+			result = node.is_in_group(s_value)
+		"text":
+			var text_val = node.get("text")
+			if text_val != null:
+				result = _str_match_or_eq(String(text_val), s_value)
+		"script":
+			var script = node.get_script()
+			if script != null:
+				result = script.resource_path == s_value
+		"type":
+			result = _node_is_type(node, s_value)
+	return result
+
+
+# Glob (Godot's String.match) if pattern contains * or ?, otherwise exact equality.
+func _str_match_or_eq(s: String, pattern: String) -> bool:
+	if "*" in pattern or "?" in pattern:
+		return s.match(pattern)
+	return s == pattern
+
+
+# Walks the engine class hierarchy via ClassDB. Built-in classes only;
+# script-defined class_name is not currently supported (could be added by
+# inspecting node.get_script().get_global_name() and walking script bases).
+func _node_is_type(node: Node, type_name: String) -> bool:
+	var klass: String = node.get_class()
+	while klass != "":
+		if klass == type_name:
+			return true
+		klass = ClassDB.get_parent_class(klass)
+	return false
+
+
+# ---------------------------------------------------------------------------
+# node_actionable — instant snapshot of whether a Control can receive a click
+# ---------------------------------------------------------------------------
+
+func _cmd_node_actionable(cmd: Dictionary, id) -> Dictionary:
+	var path: String = cmd.get("path", "")
+	var node = _server.get_tree().root.get_node_or_null(path)
+	if node == null:
+		return {"id": id, "error": "Node not found: " + path}
+
+	var checks: Dictionary = {}
+	var reasons: Array = []
+	var is_control: bool = node is Control
+	checks["control"] = is_control
+
+	if not is_control:
+		# Non-Control: we don't define actionable semantics in v1. Pass through.
+		return {"id": id, "actionable": true, "checks": checks, "reasons": reasons}
+
+	var visible: bool = node.is_visible_in_tree()
+	checks["visible"] = visible
+	if not visible:
+		reasons.append("not_visible_in_tree")
+
+	var mf_ok: bool = node.mouse_filter != Control.MOUSE_FILTER_IGNORE
+	checks["mouse_filter_ok"] = mf_ok
+	if not mf_ok:
+		reasons.append("mouse_filter_ignore")
+
+	var viewport_rect: Rect2 = node.get_viewport_rect()
+	var node_rect: Rect2 = node.get_global_rect()
+	var in_viewport: bool = viewport_rect.intersects(node_rect)
+	checks["in_viewport"] = in_viewport
+	if not in_viewport:
+		reasons.append("outside_viewport")
+
+	var actionable: bool = reasons.is_empty()
+	return {"id": id, "actionable": actionable, "checks": checks, "reasons": reasons}
 
 
 func _cmd_get_tree(cmd: Dictionary, id) -> Dictionary:
@@ -309,6 +472,35 @@ func _cmd_click_node(cmd: Dictionary, id) -> Dictionary:
 	release_event.button_index = MOUSE_BUTTON_LEFT
 	release_event.pressed = false
 	Input.parse_input_event(release_event)
+
+	return {
+		"_deferred": true,
+		"wait_type": "physics_frames",
+		"count": 2,
+		"id": id,
+		"response": {"id": id, "ok": true},
+	}
+
+
+func _cmd_hover_node(cmd: Dictionary, id) -> Dictionary:
+	var path: String = cmd.get("path", "")
+	var node = _server.get_tree().root.get_node_or_null(path)
+	if node == null:
+		return {"id": id, "error": "Node not found: " + path}
+
+	var screen_pos := Vector2.ZERO
+	if node is Control:
+		screen_pos = node.get_global_rect().get_center()
+	elif node is Node2D:
+		screen_pos = node.get_viewport_transform() * node.get_global_transform() * Vector2.ZERO
+	else:
+		return {"id": id, "error": "Cannot determine screen position for node: " + path}
+
+	var event := InputEventMouseMotion.new()
+	event.position = screen_pos
+	event.global_position = screen_pos
+	event.relative = Vector2.ZERO
+	Input.parse_input_event(event)
 
 	return {
 		"_deferred": true,
