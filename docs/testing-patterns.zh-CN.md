@@ -64,6 +64,98 @@ def game_session():
 
 ---
 
+## Locator 优先的写法
+
+**推荐做法**：优先使用 `Locator`，而不是绝对场景路径。Locator 是懒解析的引用，每次 action 都会重新查询，因此能在场景 reload 和小幅重构后继续有效——而手写的 `/root/Menu/VBox/ClickButton` 一改就坏。
+
+### 常见查询
+
+```python
+game.locator(name="StartButton")           # 按节点名
+game.locator(text="Save")                  # 按 Control.text
+game.locator(group="enemies")              # 按 group
+game.locator(type="BaseButton")            # 所有按钮（含 CheckBox 等）
+game.locator(script="res://player.gd")    # 按附加脚本
+game.locator(name="*Boss*")                # glob（值含 * 或 ?）
+```
+
+最常见两种的语法糖：
+
+```python
+game.get_by_text("UI Testing Demo")
+game.get_by_button("Start")
+```
+
+### 组合
+
+多关键字 AND 组合；`filter()` 追加更多谓词。挑读起来顺的写法。
+
+```python
+# 等价
+game.locator(type="Button", text="Save")
+game.locator(type="Button").filter(text="Save")
+```
+
+### 链式限定子树
+
+```python
+panel = game.locator(name="OptionsPanel")
+panel.locator(type="CheckBox").first().click()
+```
+
+父 Locator 必须解析到正好 1 个节点，否则抛 `MultipleMatchesError`。用 `.first()` / `.nth(i)` / `.filter(...)` 消歧。
+
+### 多匹配保护
+
+匹配到 1 个以上节点的查询默认抛 `MultipleMatchesError`。这是有意的：静默取第一个匹配是重构后失败最常见的原因。
+
+```python
+game.locator(type="Button").click()        # >1 匹配会报错
+
+# 显式选一个：
+game.locator(type="Button").first().click()
+game.locator(type="Button").nth(2).click()
+for btn in game.locator(type="Button").all():
+    btn.click()
+```
+
+### 点击的自动等待
+
+`Locator.click()` 在点击前会轮询 actionability（仅 Control 节点）：
+
+- `is_visible_in_tree()`
+- `mouse_filter != MOUSE_FILTER_IGNORE`
+- 节点的 global rect 与 viewport 相交
+
+所以即使按钮正在淡入动画，也不需要显式 `wait_*` 样板：
+
+```python
+game.get_by_button("Start").click()        # 最多等 5 秒变成可操作
+```
+
+需要跳过检查（比如目标本来就在屏幕外）传 `force=True`。
+
+### 场景 reload 后
+
+```python
+button = game.get_by_button("Click Me")
+button.click()
+game.reload_scene()
+button.click()                             # 仍然有效——会针对新树重跑查询
+```
+
+### 何时退回到 path-based API
+
+Locator 是推荐默认，但现有的 path-based API（`game.click_node(path)`、`game.get_property(path, prop)` 等）保持不变，下列场景仍合适：
+
+- 已经知道精确路径，不想多一次查询。
+- 需要 Locator 不支持的查询（比如按视口位置）。
+- 渐进式迁移已有测试。
+
+两种风格可以在同一个测试里混用。
+
+---
+
 ## 基于物理的测试
 
 ### 对移动测试使用 wait_physics_frames
