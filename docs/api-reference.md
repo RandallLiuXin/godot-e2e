@@ -533,9 +533,9 @@ Resolve immediately and return one path-pinned Locator per match. Snapshot at ca
 
 #### `locator(**kwargs) -> Locator`
 
-Chained sub-query, scoped under this Locator's resolved node.
+Chained sub-query, scoped under this Locator's resolved node. The parent is **re-resolved on every action** of the chained Locator (consistent with non-chained Locators), so chained Locators survive `reload_scene()`.
 
-**Raises**: `MultipleMatchesError` if the parent matches more than one node; `NodeNotFoundError` if zero.
+The parent must resolve to exactly one node *at action time*; otherwise `MultipleMatchesError` / `NodeNotFoundError` is raised when an action runs, not when this method is called. (`exists()` and `count()` swallow these on the parent and return `False` / `0`.)
 
 ---
 
@@ -543,11 +543,11 @@ Chained sub-query, scoped under this Locator's resolved node.
 
 #### `exists() -> bool`
 
-True if the query resolves to one or more nodes. Never raises on multi-match.
+True if the query resolves to one or more nodes. Never raises on lookup issues -- missing node, missing/ambiguous chained parent, or server lookup error all return `False`. Connection failures still propagate.
 
 #### `count() -> int`
 
-Number of matching nodes. Never raises on multi-match.
+Number of matching nodes. Returns `0` on the same conditions where `exists()` returns `False`.
 
 #### `is_visible() -> bool`
 
@@ -567,9 +567,9 @@ Whether the (single-match) target passes all actionability checks (visible_in_tr
 
 Each action re-runs the query before operating. The Locator must resolve to exactly one node; otherwise `MultipleMatchesError` / `NodeNotFoundError` is raised.
 
-#### `click(*, force=False, button=1, timeout=5.0)`
+#### `click(*, force=False, timeout=5.0)`
 
-Click the node's screen position. For Control targets, polls actionability up to `timeout` and raises `NotActionableError` if the node never becomes actionable. Pass `force=True` to skip the check. `button` is reserved for future use.
+Click the node's screen position (left button). For Control targets, polls actionability up to `timeout` and raises `NotActionableError` if the node never becomes actionable. Pass `force=True` to skip the check. Right- / middle-click support is tracked as future work; use `GodotE2E.input_mouse_button(...)` directly if needed today.
 
 #### `hover()`
 
@@ -589,7 +589,7 @@ Call a method on the node and return its result.
 
 #### `wait_visible(*, timeout=5.0)`
 
-Block until the (resolved) target passes actionability checks. Raises `TimeoutError` on deadline.
+Block until the (resolved) target passes actionability checks. Raises `NotActionableError` (with structured `reasons` and `checks`) if the deadline elapses or the node never appears.
 
 #### `wait_for_signal(signal_name, timeout=5.0)`
 

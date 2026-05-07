@@ -127,10 +127,15 @@ def test_chained_locator(game):
 
 
 def test_chained_locator_requires_single_parent(game):
-    """Multi-match parent without disambiguation raises on chaining."""
+    """Multi-match parent without disambiguation raises at action time
+    (chained Locators resolve the parent lazily so they can survive
+    scene reloads). Construction and `.exists()` deliberately do not
+    raise."""
     parent = game.locator(type="Button")  # 2 matches
+    chained = parent.locator(name="anything")  # construction is silent
+    assert chained.exists() is False        # exists() swallows the multi-match
     with pytest.raises(MultipleMatchesError):
-        parent.locator(name="anything")
+        chained.get_property("text")
 
 
 def test_no_match_raises_node_not_found(game):

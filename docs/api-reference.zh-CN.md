@@ -533,9 +533,9 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 #### `locator(**kwargs) -> Locator`
 
-链式子查询，scope 限制在当前 Locator 解析到的节点之下。
+链式子查询，scope 限制在当前 Locator 解析到的节点之下。父 Locator **每次 action 都重新解析**（与非链式 Locator 一致），所以链式 Locator 也能 survive `reload_scene()`。
 
-**抛出**：父 Locator 多匹配时 `MultipleMatchesError`；零匹配时 `NodeNotFoundError`。
+父 Locator 必须在 *action 时刻* 解析到正好 1 个节点，否则在 action 运行时抛 `MultipleMatchesError` / `NodeNotFoundError`，而不是在调用本方法时。（`exists()` 和 `count()` 会吞掉这些错误，返回 `False` / `0`。）
 
 ---
 
@@ -543,11 +543,11 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 #### `exists() -> bool`
 
-查询是否解析出 ≥1 个节点。多匹配不报错。
+查询是否解析出 ≥1 个节点。在查找类问题上不抛异常——节点缺失、链式父级缺失/多匹配、服务器查找错误都返回 `False`。连接错误仍会抛出。
 
 #### `count() -> int`
 
-匹配数。多匹配不报错。
+匹配数。在 `exists()` 返回 `False` 的相同条件下返回 `0`。
 
 #### `is_visible() -> bool`
 
@@ -567,9 +567,9 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 每个 action 都会先重跑查询。Locator 必须解析到正好 1 个节点，否则抛 `MultipleMatchesError` / `NodeNotFoundError`。
 
-#### `click(*, force=False, button=1, timeout=5.0)`
+#### `click(*, force=False, timeout=5.0)`
 
-点击节点的屏幕位置。Control 节点会轮询 actionability 直至 `timeout`，超时抛 `NotActionableError`。`force=True` 跳过检查。`button` 参数为未来扩展保留。
+点击节点的屏幕位置（左键）。Control 节点会轮询 actionability 直至 `timeout`，超时抛 `NotActionableError`。`force=True` 跳过检查。右键/中键作为未来工作跟踪；当前需要请直接使用 `GodotE2E.input_mouse_button(...)`。
 
 #### `hover()`
 
@@ -589,7 +589,7 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 #### `wait_visible(*, timeout=5.0)`
 
-阻塞直至（解析到的）目标通过 actionability 检查。超时抛 `TimeoutError`。
+阻塞直至（解析到的）目标通过 actionability 检查。超时或节点始终未出现都抛 `NotActionableError`（携带结构化 `reasons` 和 `checks`）。
 
 #### `wait_for_signal(signal_name, timeout=5.0)`
 

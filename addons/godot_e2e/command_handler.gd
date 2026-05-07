@@ -291,12 +291,20 @@ func _cmd_node_actionable(cmd: Dictionary, id) -> Dictionary:
 	var is_control: bool = node is Control
 	checks["control"] = is_control
 
+	# Visibility: meaningful for any node that exposes is_visible_in_tree
+	# (Control, Node2D, Node3D, ...). Pure Node has no visibility concept;
+	# treat as always visible.
+	var visible: bool = true
+	if node.has_method("is_visible_in_tree"):
+		visible = node.is_visible_in_tree()
+	checks["visible"] = visible
+
 	if not is_control:
-		# Non-Control: we don't define actionable semantics in v1. Pass through.
+		# Non-Control: visibility is reported, but mouse_filter / viewport
+		# checks do not apply. We do not fail actionability for them in v1;
+		# occlusion / hit-test is tracked as a separate roadmap task.
 		return {"id": id, "actionable": true, "checks": checks, "reasons": reasons}
 
-	var visible: bool = node.is_visible_in_tree()
-	checks["visible"] = visible
 	if not visible:
 		reasons.append("not_visible_in_tree")
 

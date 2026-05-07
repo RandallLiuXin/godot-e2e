@@ -46,6 +46,17 @@ def test_build_query_rejects_unknown_keyword():
         _build_query({"foo": "bar"})
 
 
+def test_build_query_rejects_none_value():
+    with pytest.raises(ValueError, match="must not be None"):
+        _build_query({"name": None})
+
+
+def test_filter_rejects_none_value():
+    client = MockClient()
+    with pytest.raises(ValueError, match="must not be None"):
+        _loc(client, name="X").filter(text=None)
+
+
 def test_build_query_single_keyword():
     q = _build_query({"name": "Btn"})
     assert q == {"by": "name", "value": "Btn", "filters": []}
@@ -174,6 +185,23 @@ def test_count():
     assert _loc(client, type="Button").count() == 3
 
 
+def test_exists_swallows_chained_multi_match_parent():
+    """A chained Locator whose parent is multi-match returns False from
+    exists(), not a MultipleMatchesError — exists() is documented as
+    non-raising on lookup conditions."""
+    client = MockClient(responses=[{"nodes": ["/a", "/b"]}])
+    parent = _loc(client, type="Button")
+    chained = parent.locator(name="X")
+    assert chained.exists() is False
+
+
+def test_count_swallows_chained_multi_match_parent():
+    client = MockClient(responses=[{"nodes": ["/a", "/b"]}])
+    parent = _loc(client, type="Button")
+    chained = parent.locator(name="X")
+    assert chained.count() == 0
+
+
 def test_is_visible_reads_check():
     client = MockClient(responses=[
         {"nodes": ["/a"]},
@@ -219,18 +247,37 @@ def test_click_force_skips_actionability():
 
 def test_click_raises_not_actionable_after_timeout():
     """Polling returns False repeatedly; eventually raises NotActionableError."""
-    # Provide enough non-actionable responses that timeout is hit.
     not_actionable = {
         "actionable": False,
         "reasons": ["not_visible_in_tree"],
         "checks": {"control": True, "visible": False},
     }
-    # 1 find_nodes + ~5 polls; mock returns the same forever-ish.
     responses = [{"nodes": ["/a"]}] + [not_actionable] * 200
     client = MockClient(responses=responses)
     with pytest.raises(NotActionableError) as excinfo:
         _loc(client, name="X").click(timeout=0.1)
     assert "not_visible_in_tree" in str(excinfo.value)
+    assert excinfo.value.path == "/a"
+
+
+def test_wait_visible_raises_not_actionable_after_timeout():
+    """wait_visible should raise NotActionableError (same exception type as
+    click's auto-wait), not TimeoutError, so the structured reasons/checks
+    are surfaced consistently."""
+    not_actionable = {
+        "actionable": False,
+        "reasons": ["mouse_filter_ignore"],
+        "checks": {"control": True, "visible": True, "mouse_filter_ok": False},
+    }
+    # find_nodes / node_actionable / find_nodes / node_actionable / ...
+    interleaved = []
+    for i in range(50):
+        interleaved.append({"nodes": ["/a"]})
+        interleaved.append(not_actionable)
+    client = MockClient(responses=interleaved)
+    with pytest.raises(NotActionableError) as excinfo:
+        _loc(client, name="X").wait_visible(timeout=0.1)
+    assert "mouse_filter_ignore" in str(excinfo.value)
     assert excinfo.value.path == "/a"
 
 
@@ -245,19 +292,51 @@ def test_chained_locator_uses_parent_path_as_start():
         {"ok": True},                      # click
     ])
     _loc(client, name="VBox").locator(type="Button").click(force=True)
-    # Second find_nodes should carry start_path
+    # Second find_nodes should carry start_path resolved from the parent.
     second = client.calls[1]
     assert second[0] == "find_nodes"
     assert second[1]["start_path"] == "/root/Menu/VBox"
 
 
-def test_chained_locator_requires_single_parent():
+def test_chained_locator_construction_does_not_resolve():
+    """Building a chained Locator must not hit the server; resolution is
+    deferred to action time so the chain survives reload_scene."""
+    client = MockClient()  # no responses queued -> any call would error
+    parent = _loc(client, name="VBox")
+    # No find_nodes call yet.
+    parent.locator(type="Button")
+    assert client.calls == []
+
+
+def test_chained_locator_re_resolves_parent_on_each_action():
+    """Two actions on the same chained Locator should resolve the parent
+    twice — caching the parent path would be a regression."""
     client = MockClient(responses=[
-        {"nodes": ["/a", "/b"]},  # parent has 2 matches
+        {"nodes": ["/root/Menu/VBox"]},          # action 1: parent
+        {"nodes": ["/root/Menu/VBox/Button"]},   # action 1: child
+        {"result": "Click Me"},                   # action 1: get_property
+        {"nodes": ["/root/Menu/VBox"]},          # action 2: parent (re-resolved)
+        {"nodes": ["/root/Menu/VBox/Button"]},   # action 2: child
+        {"result": "Click Me"},                   # action 2: get_property
+    ])
+    btn = _loc(client, name="VBox").locator(type="Button")
+    btn.get_property("text")
+    btn.get_property("text")
+    parent_calls = [c for c in client.calls if c[0] == "find_nodes" and c[1]["start_path"] == "/root"]
+    assert len(parent_calls) == 2  # parent resolved on each action
+
+
+def test_chained_locator_multi_match_parent_raises_at_action_time():
+    """Multi-match parent without disambiguation raises when the chained
+    Locator is *used*, not when the chain is constructed."""
+    client = MockClient(responses=[
+        {"nodes": ["/a", "/b"]},  # parent has 2 matches at action time
     ])
     parent = _loc(client, type="Button")
+    chained = parent.locator(name="X")  # no error here
+    assert client.calls == []
     with pytest.raises(MultipleMatchesError):
-        parent.locator(name="X")
+        chained.get_property("text")
 
 
 # ---------------------------------------------------------------------------
