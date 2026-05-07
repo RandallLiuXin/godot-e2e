@@ -66,6 +66,10 @@ func execute(cmd: Dictionary) -> Dictionary:
 			return _cmd_reload_scene(cmd, id)
 		"screenshot":
 			return _cmd_screenshot(cmd, id)
+		"set_log_verbosity":
+			return _cmd_set_log_verbosity(cmd, id)
+		"set_log_buffer_size":
+			return _cmd_set_log_buffer_size(cmd, id)
 		"quit":
 			return _cmd_quit(cmd, id)
 		_:
@@ -677,6 +681,31 @@ func _cmd_screenshot(cmd: Dictionary, id) -> Dictionary:
 		abs_path = ProjectSettings.globalize_path(save_path)
 
 	return {"id": id, "ok": true, "path": abs_path}
+
+
+# ---------------------------------------------------------------------------
+# Log capture
+# ---------------------------------------------------------------------------
+
+func _cmd_set_log_verbosity(cmd: Dictionary, id) -> Dictionary:
+	var level: String = cmd.get("level", "")
+	if not _server.set_log_verbosity(level):
+		# set_log_verbosity returns false either when log capture is
+		# inactive or when the level string is invalid. Disambiguate via
+		# the public predicate rather than reaching into _log_capture.
+		if not _server.has_log_capture():
+			return {"id": id, "error": "log_capture_unavailable", "message": "Log capture is not active"}
+		return {"id": id, "error": "invalid_argument", "message": "level must be one of error/warning/info, got '%s'" % level}
+	return {"id": id, "ok": true, "level": level}
+
+
+func _cmd_set_log_buffer_size(cmd: Dictionary, id) -> Dictionary:
+	var size: int = cmd.get("size", 0)
+	if size < 1:
+		return {"id": id, "error": "invalid_argument", "message": "size must be >= 1, got %d" % size}
+	if not _server.set_log_buffer_size(size):
+		return {"id": id, "error": "log_capture_unavailable", "message": "Log capture is not active"}
+	return {"id": id, "ok": true, "size": size}
 
 
 # ---------------------------------------------------------------------------
