@@ -326,6 +326,23 @@ def test_chained_locator_re_resolves_parent_on_each_action():
     assert len(parent_calls) == 2  # parent resolved on each action
 
 
+def test_chained_no_match_error_cites_parent_path():
+    """When a chained child has no matches, the NodeNotFoundError must
+    reference the parent's resolved path — not the default '/root' — so
+    debugging chained locators points at the real search root."""
+    client = MockClient(responses=[
+        {"nodes": ["/root/Menu/VBox"]},  # parent resolves
+        {"nodes": []},                    # child finds nothing
+    ])
+    parent = _loc(client, name="VBox")
+    chained = parent.locator(name="Missing")
+    with pytest.raises(NodeNotFoundError) as excinfo:
+        chained.get_property("text")
+    msg = str(excinfo.value)
+    assert "/root/Menu/VBox" in msg
+    assert "under '/root/Menu/VBox'" in msg
+
+
 def test_chained_locator_multi_match_parent_raises_at_action_time():
     """Multi-match parent without disambiguation raises when the chained
     Locator is *used*, not when the chain is constructed."""

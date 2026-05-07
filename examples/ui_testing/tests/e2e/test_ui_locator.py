@@ -5,7 +5,12 @@ Same coverage as the path-based version, no absolute paths.
 
 import pytest
 
-from godot_e2e import MultipleMatchesError, NodeNotFoundError
+from godot_e2e import (
+    CommandError,
+    MultipleMatchesError,
+    NodeNotFoundError,
+    NotActionableError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -90,11 +95,11 @@ def test_filter_narrows(game):
 
 
 def test_glob_name(game):
-    """Glob in `name` matches multiple labels — verify count."""
+    """Glob in `name` matches by node name (not by some other property that
+    happens to share a value)."""
     matches = game.locator(name="*Label").all()
-    names = sorted(b.get_property("text") for b in matches)
-    # TitleLabel + StatusLabel
-    assert names == sorted(["UI Testing Demo", "Not clicked yet"])
+    names = sorted(b.get_property("name") for b in matches)
+    assert names == ["StatusLabel", "TitleLabel"]
 
 
 def test_glob_text(game):
@@ -190,3 +195,49 @@ def test_force_skips_actionability(game):
     game.wait_process_frames(2)
     status = game.locator(name="StatusLabel").get_property("text")
     assert status == "Clicked 1 times"
+
+
+# ---------------------------------------------------------------------------
+# Live-Godot coverage for the remaining Locator wrappers
+# ---------------------------------------------------------------------------
+
+def test_wait_visible_succeeds_when_already_actionable(game):
+    """Happy path: returns immediately for a button that's already visible."""
+    button = game.get_by_button("Click Me")
+    button.wait_visible(timeout=2.0)
+
+
+def test_wait_visible_raises_when_invisible(game):
+    """Timeout path: hiding the Control surfaces a NotActionableError with
+    the structured 'not_visible_in_tree' reason."""
+    button = game.get_by_button("Click Me")
+    button.set_property("visible", False)
+    with pytest.raises(NotActionableError) as excinfo:
+        button.wait_visible(timeout=0.3)
+    assert "not_visible_in_tree" in excinfo.value.reasons
+
+
+def test_set_property_round_trip(game):
+    """set_property writes through Locator and is observable via is_visible()."""
+    button = game.get_by_button("Click Me")
+    assert button.is_visible() is True
+    button.set_property("visible", False)
+    assert button.is_visible() is False
+
+
+def test_call_invokes_node_method(game):
+    """call() invokes a Node method via Locator and the side effect is
+    visible through other API surfaces."""
+    button = game.get_by_button("Click Me")
+    button.call("add_to_group", ["e2e_test_group"])
+    members = game.find_by_group("e2e_test_group")
+    assert any(p.endswith("ClickButton") for p in members)
+
+
+def test_wait_for_signal_timeout_propagates(game):
+    """wait_for_signal wrapper propagates the server-side timeout as a
+    CommandError. (Happy-path firing is not exercised here because the
+    blocking call cannot also click the button from the same thread.)"""
+    button = game.get_by_button("Click Me")
+    with pytest.raises(CommandError):
+        button.wait_for_signal("pressed", timeout=0.3)

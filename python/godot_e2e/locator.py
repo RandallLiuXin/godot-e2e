@@ -184,9 +184,15 @@ class Locator:
     # Resolution (private)
     # ------------------------------------------------------------------
 
-    def _resolve_all(self) -> list:
-        # Resolve parent first if chained, so the start_path reflects the
-        # parent's *current* match, not a stale snapshot from chain time.
+    def _resolve_all_with_start(self) -> tuple:
+        """Resolve and return ``(paths, effective_start_path)``.
+
+        The effective start path is the value actually sent to ``find_nodes``
+        — for a chained Locator that's the parent's freshly resolved path,
+        for a non-chained Locator it's ``self._start_path``. Returning it
+        alongside the paths lets error messages from ``_resolve_one`` cite
+        the *real* search root instead of a stale default.
+        """
         if self._parent is not None:
             start = self._parent._resolve_one()
         else:
@@ -194,13 +200,17 @@ class Locator:
         resp = self._client.send_command(
             "find_nodes", query=self._query, start_path=start
         )
-        return resp.get("nodes", [])
+        return resp.get("nodes", []), start
+
+    def _resolve_all(self) -> list:
+        paths, _ = self._resolve_all_with_start()
+        return paths
 
     def _resolve_one(self) -> str:
-        paths = self._resolve_all()
+        paths, start = self._resolve_all_with_start()
         if not paths:
             raise NodeNotFoundError(
-                f"No node matches query {self._query!r} under {self._start_path!r}"
+                f"No node matches query {self._query!r} under {start!r}"
             )
         if self._index is not None:
             if self._index >= len(paths):

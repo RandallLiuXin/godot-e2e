@@ -878,7 +878,7 @@ class NotActionableError(GodotE2EError):
         self.checks = checks    # 各检查项布尔值字典
 ```
 
-`Locator.click()` 的 actionability 轮询超时时抛出。`reasons` 列出每一项失败的检查（`"not_visible_in_tree"`、`"mouse_filter_ignore"`、`"outside_viewport"`）。
+`Locator.click()` 和 `Locator.wait_visible()` 的 actionability 轮询超时时抛出。`reasons` 列出每一项失败的检查（`"not_visible_in_tree"`、`"mouse_filter_ignore"`、`"outside_viewport"`）。
 
 ---
 

@@ -9,6 +9,9 @@ static func serialize(value: Variant) -> Variant:
 		TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
 			return value
 
+		TYPE_STRING_NAME:
+			return str(value)
+
 		TYPE_VECTOR2:
 			return {"_t": "v2", "x": value.x, "y": value.y}
 

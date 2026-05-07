@@ -878,7 +878,7 @@ class NotActionableError(GodotE2EError):
         self.checks = checks    # dict of per-check booleans
 ```
 
-Raised by `Locator.click()` when the actionability poll times out. The `reasons` list names every failed check (`"not_visible_in_tree"`, `"mouse_filter_ignore"`, `"outside_viewport"`).
+Raised by `Locator.click()` and `Locator.wait_visible()` when the actionability poll times out. The `reasons` list names every failed check (`"not_visible_in_tree"`, `"mouse_filter_ignore"`, `"outside_viewport"`).
 
 ---
 
