@@ -12,7 +12,7 @@ The high-level E2E testing interface. This is the main class you interact with i
 
 ### Class Methods
 
-#### `GodotE2E.launch(project_path, godot_path=None, port=0, timeout=10.0, extra_args=None)`
+#### `GodotE2E.launch(project_path, godot_path=None, port=0, timeout=10.0, extra_args=None, log_verbosity=None)`
 
 Launch a Godot process and return a connected `GodotE2E` instance. Returns a context manager.
 
@@ -22,7 +22,8 @@ Launch a Godot process and return a connected `GodotE2E` instance. Returns a con
 | `godot_path` | `str` | `None` | Path to the Godot executable. If `None`, discovered from `GODOT_PATH` env var or `PATH`. |
 | `port` | `int` | `0` | TCP port for the automation server. `0` means auto-allocate a free port. |
 | `timeout` | `float` | `10.0` | Seconds to wait for the connection to succeed. |
-| `extra_args` | `list` | `None` | Additional command-line arguments forwarded to the Godot process. |
+| `extra_args` | `list` | `None` | Additional command-line arguments forwarded to the Godot process (placed before the `--` user-args separator). |
+| `log_verbosity` | `str` | `None` | Engine log capture verbosity at startup: `"error"` / `"warning"` / `"info"`. `None` keeps the addon default (`"warning"`). Adjustable at runtime via `set_log_verbosity`. |
 
 **Returns**: `GodotE2E` (usable as a context manager with `with`).
 
@@ -491,6 +492,57 @@ Sugar for `locator(type="BaseButton", text=text)`. Matches `Button`, `CheckBox`,
 
 ---
 
+### Engine Log Capture
+
+godot-e2e captures Godot-side `push_error`, `push_warning`, script runtime errors, shader errors, and (at info verbosity) `print` / `printerr` output, then surfaces them on the Python side. Requires Godot 4.5+ (see [`Logger`](https://docs.godotengine.org/en/4.5/classes/class_logger.html)).
+
+The default verbosity is `warning` (errors + warnings). Plain `print()` is excluded by default to avoid drowning the test output in noise.
+
+#### `last_logs -> list[LogEntry]`
+
+The log entries captured during the most recent command call. Cleared on each command.
+
+#### `collected_logs -> list[LogEntry]`
+
+All log entries captured since the last reset. The pytest plugin clears this at the start of every test, so under the standard `game` / `game_fresh` fixtures the list reflects only the logs produced by the current test (including its scene reload).
+
+On test failure, the same list is appended to the pytest report under a `captured godot logs` section, alongside the standard `captured stdout` / `captured stderr` blocks.
+
+#### `reset_collected_logs()`
+
+Discard all entries in `collected_logs` and `last_logs`. The pytest fixtures call this automatically; you typically only need it to scope a specific assertion to a narrower window.
+
+#### `set_log_verbosity(level)`
+
+Adjust capture verbosity at runtime. The startup default comes from the launcher's `--e2e-log-verbosity` flag.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `level` | `str` | — | One of `"error"`, `"warning"`, `"info"`. |
+
+Raises `CommandError` for any other value.
+
+```python
+def test_print_visible_under_info(game):
+    game.set_log_verbosity("info")
+    game.call("/root/Player", "_announce")  # uses print()
+    assert any("ready" in e.message for e in game.collected_logs)
+```
+
+#### `set_log_buffer_size(size)`
+
+Resize the engine log capture ring buffer at runtime. The default of 200 is sized for typical test runs; raise it for debug sessions on high-error-density games where entries are being dropped between drains, or shrink it (and deliberately trigger overflow) when validating capture-overflow handling.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `size` | `int` | — | Positive integer ring-buffer size. |
+
+Raises `ValueError` for `size < 1` at the Python boundary; the wire side returns `invalid_argument` for the same condition if the command is sent directly via `GodotClient.send_command`.
+
+When the buffer overflows between drains, the response carries a `_logs_dropped` count which the client surfaces as a single synthetic warning entry (`"<N log entries dropped due to capture buffer overflow>"`) appended uniformly to `last_logs`, `collected_logs`, and any raised exception's `logs`.
+
+---
+
 ### Misc
 
 #### `quit(exit_code=0)`
@@ -678,7 +730,7 @@ Manages launching a Godot subprocess and connecting to it. Used internally by `G
 
 ### Methods
 
-#### `launch(project_path, godot_path=None, port=0, timeout=10.0, extra_args=None) -> GodotClient`
+#### `launch(project_path, godot_path=None, port=0, timeout=10.0, extra_args=None, log_verbosity=None) -> GodotClient`
 
 Launch Godot and return a connected `GodotClient` that has completed the handshake.
 
@@ -686,10 +738,13 @@ The launcher:
 1. Finds the Godot binary (from `godot_path`, `GODOT_PATH` env var, or `PATH`).
 2. If `port=0` (default), creates a temporary port file and passes `--e2e-port=0 --e2e-port-file=<path>` so Godot auto-selects a free port and writes it to the file.
 3. Generates a random authentication token.
-4. Starts Godot with `--e2e`, `--e2e-port=N`, `--e2e-token=X` (and `--e2e-port-file` when applicable).
+4. Starts Godot with `--e2e`, `--e2e-port=N`, `--e2e-token=X` (and `--e2e-port-file` / `--e2e-log-verbosity` when applicable).
 5. Reads the actual port from the port file (if auto-allocated), then polls until a TCP connection succeeds and the handshake completes.
 
+`log_verbosity`, when non-`None`, must be one of `"error"` / `"warning"` / `"info"` — invalid values raise `ValueError` before the subprocess starts, matching the runtime contract on `set_log_verbosity`.
+
 **Raises**:
+- `ValueError` -- if `log_verbosity` is not one of the valid values.
 - `FileNotFoundError` -- if Godot cannot be located.
 - `RuntimeError` -- if the Godot process exits before connection.
 - `ConnectionError` -- if connection is not established within `timeout`.
@@ -811,6 +866,37 @@ Convert JSON dicts with `_t` type tags back to Python types. Unknown tags with `
 
 ---
 
+### LogEntry
+
+```python
+@dataclass
+class LogEntry:
+    level: str       # "error" | "warning" | "info" | "stderr"
+    message: str
+    function: str    # populated only for engine errors
+    file: str        # populated only for engine errors
+    line: int        # populated only for engine errors
+```
+
+Single log line captured from the Godot process. `function` / `file` / `line` are populated for `_log_error` callbacks (push_error, push_warning, runtime errors); they're empty for `info` / `stderr` entries (`print` / `printerr`). `__str__` renders as `[LEVEL] message (file:line)` for use in failure reports.
+
+### LogVerbosity
+
+```python
+class LogVerbosity(str, Enum):
+    ERROR = "error"
+    WARNING = "warning"   # default
+    INFO = "info"
+```
+
+The wire-protocol values accepted by `set_log_verbosity` and `--e2e-log-verbosity`.
+
+#### `parse_log_entries(raw)`
+
+Convert a raw `_logs` array (as it arrives on the wire) into a list of `LogEntry` objects. Used internally by `GodotClient`; exposed for callers that bypass the high-level API.
+
+---
+
 ## Exceptions
 
 All exceptions inherit from `GodotE2EError`.
@@ -820,7 +906,11 @@ All exceptions inherit from `GodotE2EError`.
 ```python
 class GodotE2EError(Exception):
     """Base exception for all godot-e2e errors."""
+
+    logs: list[LogEntry]  # engine logs captured during the failing command
 ```
+
+Every exception carries a `logs` attribute populated from the failed command's `_logs` payload. Empty list when no logs were captured (or when log capture is inactive).
 
 ### NodeNotFoundError
 
