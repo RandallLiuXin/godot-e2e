@@ -110,11 +110,12 @@ can read to identify the failing step without re-running the test.
 
 ## 5. Hit-test actionability / occlusion detection
 
-**Pain:** Task 1's actionability check only verifies the target node's own
-state (`is_visible_in_tree`, `mouse_filter`, viewport rect). It cannot tell
-whether a click would actually reach the target — modal popups, overlapping
-sibling Controls, and ancestors with `mouse_filter = STOP` can all silently
-swallow the event. Tests pass while the click went somewhere else.
+**Pain:** Task 1's actionability check verifies a target's *own* state
+(visibility, mouse_filter, viewport rect for `Control`; visibility for
+`Node2D`). It cannot tell whether a click would actually reach the target
+— modal popups, overlapping sibling Controls, and ancestors with
+`mouse_filter = STOP` can all silently swallow the event. Tests pass
+while the click went somewhere else.
 
 **Approach (firm constraint):** delegate to Godot's own GUI dispatcher
 rather than reimplementing hit-test in GDScript. The engine's rules
@@ -146,6 +147,35 @@ guesses.
 **Acceptance:** a test that clicks a Locator covered by a modal popup
 fails with a message naming the occluder, instead of silently passing
 because the click reached the modal.
+
+---
+
+## 6. `wait_for_signal` happy-path live coverage
+
+**Pain:** `wait_for_signal` (both `GodotE2E.wait_for_signal` and
+`Locator.wait_for_signal`) is only mock-tested for the success path. The
+single sync TCP connection holds its lock for the full duration of the
+deferred call, so the same test thread cannot also send a command that
+would trigger the signal (e.g. a click). Real-Godot coverage today is
+limited to the timeout path.
+
+**In scope** — pick one of:
+- A second `GodotClient` connection in a worker thread, with the launcher
+  exposing its token / port for re-connection. The waiter runs on the
+  worker connection, the trigger fires from the main connection.
+- A game-side auto-emit hook that fires the target signal after a small
+  game-time delay (e.g. `SceneTree.create_timer(...).timeout`). The test
+  schedules it via `call_method` then immediately calls `wait_for_signal`.
+
+**Out of scope**
+- Async/await Python API (separate larger architectural change).
+
+**Depends on:** task 1 (Locator) for the locator-side wrapper, but the
+underlying gap pre-dates the Locator work — the path-based
+`GodotE2E.wait_for_signal` has the same coverage hole.
+
+**Acceptance:** a real-Godot test that subscribes to a signal, has it
+fired by the game side, and asserts on the returned argument list.
 
 ---
 

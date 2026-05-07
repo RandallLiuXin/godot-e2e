@@ -460,6 +460,37 @@ Capture a screenshot of the current viewport.
 
 ---
 
+### Locators
+
+These methods construct a [`Locator`](#locator). They do not hit the server.
+
+#### `locator(**kwargs) -> Locator`
+
+Build a Locator with one or more query strategies (AND-composed).
+
+| Keyword | Description |
+|---|---|
+| `path` | Absolute scene path. Returns 0 or 1 match. |
+| `name` | Node name. Glob if value contains `*` or `?`, else exact. |
+| `group` | Group name. |
+| `text` | Compared against `node.text` if present. Glob/exact same rule as `name`. |
+| `script` | Script resource path (e.g. `"res://player.gd"`). Exact. |
+| `type` | Class name. Matches via `is X` so descendants are included. |
+
+**Returns**: `Locator`.
+
+**Raises**: `ValueError` -- if no keyword is given or an unknown keyword is used.
+
+#### `get_by_text(text) -> Locator`
+
+Sugar for `locator(text=text)`.
+
+#### `get_by_button(text) -> Locator`
+
+Sugar for `locator(type="BaseButton", text=text)`. Matches `Button`, `CheckBox`, `OptionButton`, `MenuButton`, `LinkButton`.
+
+---
+
 ### Misc
 
 #### `quit(exit_code=0)`
@@ -469,6 +500,115 @@ Terminate the Godot process. The resulting `ConnectionLostError` is suppressed i
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `exit_code` | `int` | `0` | Process exit code. |
+
+---
+
+## Locator
+
+`godot_e2e.Locator`
+
+A lazy, multi-strategy reference to one or more nodes in the running scene tree. Locators **re-resolve on every action**, so they remain valid across `reload_scene()` and other tree mutations.
+
+Construct via [`GodotE2E.locator()`](#locatorkwargs---locator), [`get_by_text()`](#get_by_texttext---locator), or [`get_by_button()`](#get_by_buttontext---locator). The constructor is not part of the public API.
+
+### Refinement
+
+Each method returns a *new* Locator. The original is never mutated.
+
+#### `filter(**kwargs) -> Locator`
+
+Add additional AND-composed predicates. Same keyword set as `GodotE2E.locator()`.
+
+#### `first() -> Locator`
+
+Always pick the first match in tree-walk order.
+
+#### `nth(i) -> Locator`
+
+Pick the i-th match (zero-indexed). Raises `ValueError` if `i < 0`.
+
+#### `all() -> list[Locator]`
+
+Resolve immediately and return one path-pinned Locator per match. Snapshot at call time -- subsequent tree mutations do not update the list. Returns `[]` (no error) when nothing matches.
+
+#### `locator(**kwargs) -> Locator`
+
+Chained sub-query, scoped under this Locator's resolved node. The parent is **re-resolved on every action** of the chained Locator (consistent with non-chained Locators), so chained Locators survive `reload_scene()`.
+
+The parent must resolve to exactly one node *at action time*; otherwise `MultipleMatchesError` / `NodeNotFoundError` is raised when an action runs, not when this method is called. (`exists()` and `count()` swallow these on the parent and return `False` / `0`.)
+
+---
+
+### Inspection
+
+#### `exists() -> bool`
+
+True if the query resolves to one or more nodes. Never raises on lookup issues -- missing node, missing/ambiguous chained parent, or server lookup error all return `False`. Connection failures still propagate.
+
+#### `count() -> int`
+
+Number of matching nodes. Returns `0` on the same conditions where `exists()` returns `False`.
+
+#### `is_visible() -> bool`
+
+Whether the (single-match) target is visible in the scene tree.
+
+**Raises**: `MultipleMatchesError`, `NodeNotFoundError`.
+
+#### `is_actionable() -> bool`
+
+Whether the (single-match) target passes all actionability checks (visible_in_tree + mouse_filter + viewport intersect).
+
+**Raises**: `MultipleMatchesError`, `NodeNotFoundError`.
+
+---
+
+### Actions
+
+Each action re-runs the query before operating. The Locator must resolve to exactly one node; otherwise `MultipleMatchesError` / `NodeNotFoundError` is raised.
+
+#### `click(*, force=False, timeout=5.0)`
+
+Click the node's screen position (left button). For Control targets, polls actionability up to `timeout` and raises `NotActionableError` if the node never becomes actionable. Pass `force=True` to skip the check. Right- / middle-click support is tracked as future work; use `GodotE2E.input_mouse_button(...)` directly if needed today.
+
+#### `hover()`
+
+Inject `InputEventMouseMotion` at the node's screen position. Useful for testing tooltip / hover state. Note that this triggers `mouse_entered` / `_gui_input` on intervening Controls.
+
+#### `get_property(prop)`
+
+Read a property. Sub-property paths like `"position:x"` are supported.
+
+#### `set_property(prop, value)`
+
+Write a property. Python type wrappers (`Vector2`, `Color`, ...) are serialized automatically.
+
+#### `call(method, args=None)`
+
+Call a method on the node and return its result.
+
+#### `wait_visible(*, timeout=5.0)`
+
+Block until the (resolved) target passes actionability checks. Raises `NotActionableError` (with structured `reasons` and `checks`) if the deadline elapses or the node never appears.
+
+#### `wait_for_signal(signal_name, timeout=5.0)`
+
+Block until the (resolved) node emits the named signal. Returns the list of signal arguments. Raises `TimeoutError` on deadline.
+
+---
+
+### Auto-wait scope
+
+`click()` and `wait_visible()` poll a server-side actionability snapshot. The checks applied depend on the node kind:
+
+- **`Control`** -- full check:
+  1. `is_visible_in_tree()` -- visible up the parent chain.
+  2. `mouse_filter != MOUSE_FILTER_IGNORE` -- would receive mouse events.
+  3. `get_global_rect().intersects(viewport_rect)` -- inside the visible area.
+- **`Node2D`** -- visibility only (`is_visible_in_tree()`). Node2D has no `mouse_filter` equivalent, and its bounding rect for viewport intersection is not generally available.
+- **`Node3D` / `Window` / plain `Node`** -- actionability fails with reason `"unclickable_node_type"`. `click_node` / `hover_node` cannot resolve a screen position for these node kinds, so the check refuses up front rather than letting `click()` raise later. Use a child `Control` or `Node2D` instead.
+
+Occlusion / hit-test detection is tracked as a separate ROADMAP task.
 
 ---
 
@@ -720,6 +860,28 @@ class CommandError(GodotE2EError):
 ```
 
 Raised when the Godot server returns an error that is not a "not found" error. This includes unknown commands, invalid properties, failed method calls, and other server-side errors.
+
+### MultipleMatchesError
+
+```python
+class MultipleMatchesError(GodotE2EError):
+    def __init__(self, message: str, paths: list):
+        self.paths = paths  # list[str]
+```
+
+Raised by Locator actions when the query matches more than one node and no `.first()` / `.nth(i)` / `.filter(...)` was applied. The `paths` attribute carries the full list of matched node paths.
+
+### NotActionableError
+
+```python
+class NotActionableError(GodotE2EError):
+    def __init__(self, message: str, path: str, reasons: list, checks: dict):
+        self.path = path
+        self.reasons = reasons  # e.g. ["not_visible_in_tree"]
+        self.checks = checks    # dict of per-check booleans
+```
+
+Raised by `Locator.click()` and `Locator.wait_visible()` when the actionability poll times out. The `reasons` list names every failed check (`"not_visible_in_tree"`, `"mouse_filter_ignore"`, `"outside_viewport"`).
 
 ---
 

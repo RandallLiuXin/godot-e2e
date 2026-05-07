@@ -64,6 +64,98 @@ def game_session():
 
 ---
 
+## Locator-First Authoring
+
+**Recommendation**: prefer `Locator` over absolute scene paths. Locators are lazy references that re-resolve on every action, so they survive scene reloads and minor refactors that would break a hand-written `/root/Menu/VBox/ClickButton`.
+
+### Common queries
+
+```python
+game.locator(name="StartButton")           # by node name
+game.locator(text="Save")                  # by Control.text
+game.locator(group="enemies")              # by group
+game.locator(type="BaseButton")            # all buttons (incl. CheckBox, etc.)
+game.locator(script="res://player.gd")    # by attached script
+game.locator(name="*Boss*")                # glob (when value contains * or ?)
+```
+
+Sugar for the two most common cases:
+
+```python
+game.get_by_text("UI Testing Demo")
+game.get_by_button("Start")
+```
+
+### Composition
+
+Multiple kwargs are AND-composed; `filter()` adds more predicates. Use whichever reads better.
+
+```python
+# Equivalent
+game.locator(type="Button", text="Save")
+game.locator(type="Button").filter(text="Save")
+```
+
+### Chaining for sub-tree scope
+
+```python
+panel = game.locator(name="OptionsPanel")
+panel.locator(type="CheckBox").first().click()
+```
+
+The parent must resolve to exactly one node — otherwise `MultipleMatchesError`. Use `.first()` / `.nth(i)` / `.filter(...)` to disambiguate.
+
+### Multi-match safety
+
+A query that matches more than one node raises `MultipleMatchesError` by default. This is deliberate: silently picking the first match is the most common cause of post-refactor flakiness.
+
+```python
+game.locator(type="Button").click()        # raises if > 1 match
+
+# All explicit:
+game.locator(type="Button").first().click()
+game.locator(type="Button").nth(2).click()
+for btn in game.locator(type="Button").all():
+    btn.click()
+```
+
+### Auto-wait on click
+
+`Locator.click()` polls actionability before clicking (Control targets only):
+
+- `is_visible_in_tree()`
+- `mouse_filter != MOUSE_FILTER_IGNORE`
+- the node's global rect intersects the viewport
+
+So this works without explicit `wait_*` boilerplate even when the button is being animated in:
+
+```python
+game.get_by_button("Start").click()        # waits up to 5s for actionability
+```
+
+Pass `force=True` when you want to skip the check (e.g. the target is intentionally off-screen).
+
+### After scene reload
+
+```python
+button = game.get_by_button("Click Me")
+button.click()
+game.reload_scene()
+button.click()                             # still works — query re-runs against fresh tree
+```
+
+### When to fall back to the path-based API
+
+Locator is the recommended default, but the existing path-based API (`game.click_node(path)`, `game.get_property(path, prop)`, ...) is unchanged and still appropriate when:
+
+- You already know the exact path and want zero overhead.
+- You need an unsupported query (e.g. by viewport position).
+- You are migrating an existing test gradually.
+
+Both styles can be mixed within the same test.
+
+---
+
 ## Physics-Based Testing
 
 ### Use wait_physics_frames for movement tests

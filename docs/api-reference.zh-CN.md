@@ -460,6 +460,37 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 ---
 
+### Locator 构造方法
+
+这些方法用于构造 [`Locator`](#locator)，本身不会发送命令。
+
+#### `locator(**kwargs) -> Locator`
+
+用一个或多个查询策略（AND 组合）构造一个 Locator。
+
+| 关键字 | 说明 |
+|---|---|
+| `path` | 绝对场景路径，0 或 1 个匹配。 |
+| `name` | 节点名。值含 `*` 或 `?` 时按 glob，否则精确。 |
+| `group` | 组名。 |
+| `text` | 与 `node.text` 比较（如果节点有该属性）。glob/精确规则同 `name`。 |
+| `script` | 脚本资源路径（如 `"res://player.gd"`），精确匹配。 |
+| `type` | 类名。通过 `is X` 匹配，含子类。 |
+
+**返回值**：`Locator`。
+
+**抛出**：`ValueError` —— 未提供任何关键字或使用了未知关键字。
+
+#### `get_by_text(text) -> Locator`
+
+`locator(text=text)` 的语法糖。
+
+#### `get_by_button(text) -> Locator`
+
+`locator(type="BaseButton", text=text)` 的语法糖。覆盖 `Button`、`CheckBox`、`OptionButton`、`MenuButton`、`LinkButton`。
+
+---
+
 ### 其他
 
 #### `quit(exit_code=0)`
@@ -469,6 +500,115 @@ x, y, enemy_exists = results[0], results[1], results[2]
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `exit_code` | `int` | `0` | 进程退出码。 |
+
+---
+
+## Locator
+
+`godot_e2e.Locator`
+
+对运行中场景树里一个或多个节点的懒解析、多策略引用。Locator **每次 action 都重新解析**，因此 `reload_scene()` 等树变更后老 Locator 仍然有效。
+
+通过 [`GodotE2E.locator()`](#locatorkwargs---locator)、[`get_by_text()`](#get_by_texttext---locator)、[`get_by_button()`](#get_by_buttontext---locator) 构造；构造函数本身不属于公开 API。
+
+### Refinement（链式细化）
+
+每个方法都返回一个**新**的 Locator，原对象不会被修改。
+
+#### `filter(**kwargs) -> Locator`
+
+追加 AND 组合的谓词。关键字集合与 `GodotE2E.locator()` 相同。
+
+#### `first() -> Locator`
+
+总是取树遍历顺序里的第一个匹配。
+
+#### `nth(i) -> Locator`
+
+取第 i 个匹配（从 0 开始）。`i < 0` 抛 `ValueError`。
+
+#### `all() -> list[Locator]`
+
+立即解析，每个匹配返回一个 path-pinned 的 Locator。这是调用时刻的快照——后续树变更不会更新返回的列表。零匹配返回 `[]`，不报错。
+
+#### `locator(**kwargs) -> Locator`
+
+链式子查询，scope 限制在当前 Locator 解析到的节点之下。父 Locator **每次 action 都重新解析**（与非链式 Locator 一致），所以链式 Locator 也能 survive `reload_scene()`。
+
+父 Locator 必须在 *action 时刻* 解析到正好 1 个节点，否则在 action 运行时抛 `MultipleMatchesError` / `NodeNotFoundError`，而不是在调用本方法时。（`exists()` 和 `count()` 会吞掉这些错误，返回 `False` / `0`。）
+
+---
+
+### Inspection（只读检查）
+
+#### `exists() -> bool`
+
+查询是否解析出 ≥1 个节点。在查找类问题上不抛异常——节点缺失、链式父级缺失/多匹配、服务器查找错误都返回 `False`。连接错误仍会抛出。
+
+#### `count() -> int`
+
+匹配数。在 `exists()` 返回 `False` 的相同条件下返回 `0`。
+
+#### `is_visible() -> bool`
+
+（要求单匹配）目标在场景树中是否可见。
+
+**抛出**：`MultipleMatchesError`、`NodeNotFoundError`。
+
+#### `is_actionable() -> bool`
+
+（要求单匹配）目标是否通过全部三项 actionability 检查（visible_in_tree + mouse_filter + viewport 相交）。
+
+**抛出**：`MultipleMatchesError`、`NodeNotFoundError`。
+
+---
+
+### Action（每次都重新解析）
+
+每个 action 都会先重跑查询。Locator 必须解析到正好 1 个节点，否则抛 `MultipleMatchesError` / `NodeNotFoundError`。
+
+#### `click(*, force=False, timeout=5.0)`
+
+点击节点的屏幕位置（左键）。Control 节点会轮询 actionability 直至 `timeout`，超时抛 `NotActionableError`。`force=True` 跳过检查。右键/中键作为未来工作跟踪；当前需要请直接使用 `GodotE2E.input_mouse_button(...)`。
+
+#### `hover()`
+
+在节点屏幕位置注入 `InputEventMouseMotion`。用于测试 tooltip / hover 效果。注意：会触发途经 Control 的 `mouse_entered` / `_gui_input`。
+
+#### `get_property(prop)`
+
+读取属性。支持 `"position:x"` 这样的子属性路径。
+
+#### `set_property(prop, value)`
+
+写入属性。Python 类型 wrapper（`Vector2`、`Color` 等）会自动序列化。
+
+#### `call(method, args=None)`
+
+在节点上调用方法并返回结果。
+
+#### `wait_visible(*, timeout=5.0)`
+
+阻塞直至（解析到的）目标通过 actionability 检查。超时或节点始终未出现都抛 `NotActionableError`（携带结构化 `reasons` 和 `checks`）。
+
+#### `wait_for_signal(signal_name, timeout=5.0)`
+
+阻塞直至（解析到的）节点发出指定信号，返回信号参数列表。超时抛 `TimeoutError`。
+
+---
+
+### Auto-wait 范围
+
+`click()` 和 `wait_visible()` 轮询服务端 actionability 快照。具体检查项随节点类型而定：
+
+- **`Control`**——全套三项检查：
+  1. `is_visible_in_tree()`——父链全部可见。
+  2. `mouse_filter != MOUSE_FILTER_IGNORE`——能接收鼠标事件。
+  3. `get_global_rect().intersects(viewport_rect)`——位于可见区域内。
+- **`Node2D`**——仅检查可见性（`is_visible_in_tree()`）。Node2D 没有 `mouse_filter` 对等概念，且通用 bounding rect 不易获得，故不做 viewport 检查。
+- **`Node3D` / `Window` / 普通 `Node`**——actionability 直接失败，`reasons` 含 `"unclickable_node_type"`。`click_node` / `hover_node` 无法为这些节点类型计算屏幕位置，提前拒绝比让 `click()` 抛错更直接。改用子级 `Control` 或 `Node2D`。
+
+遮挡 / hit-test 检测作为单独 ROADMAP 任务跟踪。
 
 ---
 
@@ -720,6 +860,28 @@ class CommandError(GodotE2EError):
 ```
 
 当 Godot 服务器返回非"节点未找到"的错误时触发。包括未知命令、无效属性、方法调用失败以及其他服务器端错误。
+
+### MultipleMatchesError
+
+```python
+class MultipleMatchesError(GodotE2EError):
+    def __init__(self, message: str, paths: list):
+        self.paths = paths  # list[str]
+```
+
+Locator action 在查询匹配到多个节点、且未使用 `.first()` / `.nth(i)` / `.filter(...)` 消歧时抛出。`paths` 属性带有全部匹配节点路径。
+
+### NotActionableError
+
+```python
+class NotActionableError(GodotE2EError):
+    def __init__(self, message: str, path: str, reasons: list, checks: dict):
+        self.path = path
+        self.reasons = reasons  # 例如 ["not_visible_in_tree"]
+        self.checks = checks    # 各检查项布尔值字典
+```
+
+`Locator.click()` 和 `Locator.wait_visible()` 的 actionability 轮询超时时抛出。`reasons` 列出每一项失败的检查（`"not_visible_in_tree"`、`"mouse_filter_ignore"`、`"outside_viewport"`）。
 
 ---
 

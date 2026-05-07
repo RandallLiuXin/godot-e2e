@@ -174,3 +174,27 @@ class ConnectionLostError(GodotE2EError):
 
 class CommandError(GodotE2EError):
     """Raised when the server returns an error response."""
+
+
+class MultipleMatchesError(GodotE2EError):
+    """Raised when a Locator action requires a single match but the query
+    matched multiple nodes. Carries the full list of matched paths so the
+    caller can pick one explicitly via .first() / .nth(i) / .filter(...).
+    """
+
+    def __init__(self, message: str, paths: list):
+        super().__init__(message)
+        self.paths = paths
+
+
+class NotActionableError(GodotE2EError):
+    """Raised when a Locator action's actionability check fails (visibility,
+    mouse_filter, viewport bounds). Carries the per-check status and the
+    list of failing reasons.
+    """
+
+    def __init__(self, message: str, path: str, reasons: list, checks: dict):
+        super().__init__(message)
+        self.path = path
+        self.reasons = reasons
+        self.checks = checks
