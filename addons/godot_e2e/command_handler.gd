@@ -289,7 +289,9 @@ func _cmd_node_actionable(cmd: Dictionary, id) -> Dictionary:
 	var checks: Dictionary = {}
 	var reasons: Array = []
 	var is_control: bool = node is Control
+	var is_node2d: bool = node is Node2D
 	checks["control"] = is_control
+	checks["node2d"] = is_node2d
 
 	# Visibility: meaningful for any node that exposes is_visible_in_tree
 	# (Control, Node2D, Node3D, ...). Pure Node has no visibility concept;
@@ -299,15 +301,25 @@ func _cmd_node_actionable(cmd: Dictionary, id) -> Dictionary:
 		visible = node.is_visible_in_tree()
 	checks["visible"] = visible
 
-	if not is_control:
-		# Non-Control: visibility is reported, but mouse_filter / viewport
-		# checks do not apply. We do not fail actionability for them in v1;
-		# occlusion / hit-test is tracked as a separate roadmap task.
-		return {"id": id, "actionable": true, "checks": checks, "reasons": reasons}
+	# Only Control and Node2D can be targeted by click_node / hover_node
+	# (the action commands compute a screen position that's only defined for
+	# those types). Other node kinds — Node3D, Window, plain Node — are
+	# rejected up front so is_actionable() does not promise a click that
+	# click() will refuse with "Cannot determine screen position".
+	if not is_control and not is_node2d:
+		reasons.append("unclickable_node_type")
+		return {"id": id, "actionable": false, "checks": checks, "reasons": reasons}
 
 	if not visible:
 		reasons.append("not_visible_in_tree")
 
+	if not is_control:
+		# Node2D: visibility is the only check that applies. mouse_filter and
+		# viewport-rect checks are Control-only concepts.
+		var actionable_2d: bool = reasons.is_empty()
+		return {"id": id, "actionable": actionable_2d, "checks": checks, "reasons": reasons}
+
+	# Control: full check.
 	var mf_ok: bool = node.mouse_filter != Control.MOUSE_FILTER_IGNORE
 	checks["mouse_filter_ok"] = mf_ok
 	if not mf_ok:

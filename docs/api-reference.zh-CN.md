@@ -599,13 +599,16 @@ x, y, enemy_exists = results[0], results[1], results[2]
 
 ### Auto-wait 范围
 
-`click()` 和 `wait_visible()` 在 Control 节点上轮询服务端 actionability 快照，做三项检查：
+`click()` 和 `wait_visible()` 轮询服务端 actionability 快照。具体检查项随节点类型而定：
 
-1. `is_visible_in_tree()`——父链全部可见。
-2. `mouse_filter != MOUSE_FILTER_IGNORE`——能接收鼠标事件。
-3. `get_global_rect().intersects(viewport_rect)`——位于可见区域内。
+- **`Control`**——全套三项检查：
+  1. `is_visible_in_tree()`——父链全部可见。
+  2. `mouse_filter != MOUSE_FILTER_IGNORE`——能接收鼠标事件。
+  3. `get_global_rect().intersects(viewport_rect)`——位于可见区域内。
+- **`Node2D`**——仅检查可见性（`is_visible_in_tree()`）。Node2D 没有 `mouse_filter` 对等概念，且通用 bounding rect 不易获得，故不做 viewport 检查。
+- **`Node3D` / `Window` / 普通 `Node`**——actionability 直接失败，`reasons` 含 `"unclickable_node_type"`。`click_node` / `hover_node` 无法为这些节点类型计算屏幕位置，提前拒绝比让 `click()` 抛错更直接。改用子级 `Control` 或 `Node2D`。
 
-`Node2D` / `Node3D` / 普通 `Node` 直接通过检查；定位是否正确由用户自己保证。遮挡 / hit-test 检测作为单独 ROADMAP 任务跟踪。
+遮挡 / hit-test 检测作为单独 ROADMAP 任务跟踪。
 
 ---
 

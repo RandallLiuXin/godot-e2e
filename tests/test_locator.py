@@ -218,6 +218,18 @@ def test_is_actionable_reads_top_level():
     assert _loc(client, name="X").is_actionable() is True
 
 
+def test_is_actionable_false_for_unclickable_node_type():
+    """Server reports `unclickable_node_type` for Node3D / Window / plain
+    Node — the Python wrapper passes the bool through unchanged."""
+    client = MockClient(responses=[
+        {"nodes": ["/root"]},
+        {"actionable": False,
+         "reasons": ["unclickable_node_type"],
+         "checks": {"control": False, "node2d": False, "visible": True}},
+    ])
+    assert _loc(client, path="/root").is_actionable() is False
+
+
 # ---------------------------------------------------------------------------
 # Click flow
 # ---------------------------------------------------------------------------

@@ -359,8 +359,16 @@ class Locator:
     def wait_for_signal(self, signal_name: str, timeout: float = 5.0):
         """Block until the (resolved) node emits the named signal.
 
-        Returns the list of signal arguments. Raises if the signal does
-        not fire before ``timeout``.
+        Returns the list of signal arguments. Raises ``CommandError`` if
+        the signal does not fire before ``timeout``.
+
+        .. note::
+            The single sync TCP connection holds its lock for the full
+            duration of this call, so the *same* test thread cannot also
+            send commands that would trigger the signal (e.g. a click).
+            Live-Godot happy-path coverage therefore requires either a
+            game-side auto-emit hook or a second client connection; see
+            ROADMAP for the planned follow-up.
         """
         path = self._resolve_one()
         resp = self._client.send_command(

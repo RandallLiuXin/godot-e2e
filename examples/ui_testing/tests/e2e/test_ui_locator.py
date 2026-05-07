@@ -165,6 +165,14 @@ def test_is_visible_is_actionable(game):
     assert button.is_actionable() is True
 
 
+def test_is_actionable_false_for_non_clickable_node(game):
+    """`/root` is a Window — neither Control nor Node2D — so actionability
+    must report False, matching the fact that click_node / hover_node cannot
+    resolve a screen position for it."""
+    root = game.locator(path="/root")
+    assert root.is_actionable() is False
+
+
 def test_locator_survives_reload_scene(game):
     """A locator constructed before reload_scene resolves correctly after."""
     button = game.get_by_button("Click Me")

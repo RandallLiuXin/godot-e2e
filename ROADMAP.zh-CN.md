@@ -91,7 +91,7 @@ godot-e2e 的计划工作，按优先级和依赖关系排序。
 
 ## 5. Hit-test 可操作性 / 遮挡检测
 
-**痛点：** 任务 1 的 actionability 检查只验证目标节点自身的状态（`is_visible_in_tree`、`mouse_filter`、viewport rect），无法判断点击是否真的能落在目标上——modal 弹窗、相互重叠的兄弟 Control、`mouse_filter = STOP` 的祖先都可能静默吞掉事件。测试通过了，点击实际上落到了别处。
+**痛点：** 任务 1 的 actionability 检查只验证目标节点*自身*的状态（`Control` 的 visibility / mouse_filter / viewport rect；`Node2D` 的 visibility），无法判断点击是否真的能落在目标上——modal 弹窗、相互重叠的兄弟 Control、`mouse_filter = STOP` 的祖先都可能静默吞掉事件。测试通过了，点击实际上落到了别处。
 
 **方法（硬性约束）：** 委托给 Godot 自己的 GUI dispatcher，不要在 GDScript 里重写 hit-test。引擎的规则（`CanvasLayer`、`top_level`、`clip_contents`、`mouse_filter` 级联、透明区域、嵌套 viewport）跨版本演进；任何 GDScript 重写一定会偏离。
 
@@ -108,6 +108,23 @@ godot-e2e 的计划工作，按优先级和依赖关系排序。
 **依赖：** 任务 1（Locator）。应等任务 1 发布、真实编写场景暴露出实际需要处理的遮挡模式后再开始——过早设计会把猜测固化。
 
 **验收：** 一个被 modal 弹窗覆盖的 Locator 被点击时，测试以指出遮挡者的明确消息失败，而不是因为点击落到 modal 上而静默通过。
+
+---
+
+## 6. `wait_for_signal` happy-path 真 Godot 覆盖
+
+**痛点：** `wait_for_signal`（`GodotE2E.wait_for_signal` 和 `Locator.wait_for_signal` 都算）目前只有 mock 测过 happy-path。当前同步 TCP 单连接在 deferred 调用期间持锁的整个时长，导致同一个测试线程**没法**再发触发信号的命令（如 click）。真 Godot 覆盖目前只到 timeout-path。
+
+**范围内** —— 二选一：
+- worker 线程开第二个 `GodotClient` 连接，launcher 暴露 token / port 以便复连。waiter 在 worker 连接上，trigger 在主连接上。
+- game 侧加自动 emit 钩子，延迟一小段 game-time（`SceneTree.create_timer(...).timeout`）后触发目标信号。测试通过 `call_method` 安排好立刻调 `wait_for_signal`。
+
+**范围外**
+- async/await Python API（更大的架构变更，独立讨论）。
+
+**依赖：** 任务 1（Locator）对 Locator 包装而言；但底层缺口早于 Locator——基于 path 的 `GodotE2E.wait_for_signal` 也有这个洞。
+
+**验收：** 一个真 Godot 测试订阅信号、由 game 侧触发、对返回参数列表做断言。
 
 ---
 

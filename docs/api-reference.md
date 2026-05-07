@@ -599,13 +599,16 @@ Block until the (resolved) node emits the named signal. Returns the list of sign
 
 ### Auto-wait scope
 
-`click()` and `wait_visible()` poll a server-side actionability snapshot with three checks (Control nodes only):
+`click()` and `wait_visible()` poll a server-side actionability snapshot. The checks applied depend on the node kind:
 
-1. `is_visible_in_tree()` -- visible up the parent chain.
-2. `mouse_filter != MOUSE_FILTER_IGNORE` -- would receive mouse events.
-3. `get_global_rect().intersects(viewport_rect)` -- inside the visible area.
+- **`Control`** -- full check:
+  1. `is_visible_in_tree()` -- visible up the parent chain.
+  2. `mouse_filter != MOUSE_FILTER_IGNORE` -- would receive mouse events.
+  3. `get_global_rect().intersects(viewport_rect)` -- inside the visible area.
+- **`Node2D`** -- visibility only (`is_visible_in_tree()`). Node2D has no `mouse_filter` equivalent, and its bounding rect for viewport intersection is not generally available.
+- **`Node3D` / `Window` / plain `Node`** -- actionability fails with reason `"unclickable_node_type"`. `click_node` / `hover_node` cannot resolve a screen position for these node kinds, so the check refuses up front rather than letting `click()` raise later. Use a child `Control` or `Node2D` instead.
 
-For `Node2D` / `Node3D` / plain `Node`, the check returns immediately as actionable; document and verify positioning yourself. Occlusion / hit-test detection is tracked as a separate ROADMAP task.
+Occlusion / hit-test detection is tracked as a separate ROADMAP task.
 
 ---
 
