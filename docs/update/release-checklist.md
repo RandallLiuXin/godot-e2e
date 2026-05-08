@@ -53,7 +53,7 @@ Steps to follow when publishing a new version of godot-e2e.
 
 7. **Update the asset on https://godotengine.org/asset-library/asset**
    - Log in and edit the existing asset (or submit a new one for the first release)
-   - Update the **Commit/Tag** field to `vX.Y.Z`
+   - Update the **Download Commit/URL** field to the **full commit hash** that the `vX.Y.Z` tag points to (the form expects 40 or 64 hex digits and **does not accept tag names**). Get the hash via `git rev-parse vX.Y.Z`.
    - Update the **Godot version** field to the current minimum (e.g. `4.5`) — Asset Library uses this to filter the listing for users on older engines
    - Update the description if needed
    - Wait for moderator approval

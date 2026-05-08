@@ -21,4 +21,6 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Fixed
 
+- `docs/update/release-checklist.md` step 7 — corrected the Asset Library field name (`Download Commit/URL`, not `Commit/Tag`) and clarified that it requires a full commit hash; tag names are rejected by the form. — @LiuXin
+
 ## Removed
