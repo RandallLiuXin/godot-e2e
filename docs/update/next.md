@@ -17,6 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
+- GitHub Pages documentation site built with MkDocs Material — bilingual (en + zh-CN) via `mkdocs-static-i18n`, full-text search across both languages, language switcher in the header, dedicated landing page distinct from the README. Auto-deploys to `https://randallliuxin.github.io/godot-e2e/` on every push to `main` that touches `docs/`, `mkdocs.yml`, or `requirements-docs.txt`. (#PR_NUMBER) — @LiuXin
+
 ## Changed
 
 ## Fixed

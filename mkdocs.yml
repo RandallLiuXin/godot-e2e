@@ -1,0 +1,132 @@
+site_name: godot-e2e
+site_description: Out-of-process E2E testing tool for Godot
+site_url: https://randallliuxin.github.io/godot-e2e/
+repo_url: https://github.com/RandallLiuXin/godot-e2e
+repo_name: RandallLiuXin/godot-e2e
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2025 LIU MINGJUN
+
+docs_dir: docs
+
+# Files under docs/ that are internal-only or not meant for the public site.
+# (docs/internal/ and docs/review/ are also gitignored, so they only matter for local builds.)
+exclude_docs: |
+  internal/
+  review/
+  update/next.md
+  update/next.template.md
+  update/release-checklist.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/RandallLiuXin/godot-e2e
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/godot-e2e/
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      # Unicode-aware slugifier so headings like "## 类型" get a stable,
+      # human-readable anchor instead of falling back to "_15".
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+          nav_translations:
+            Home: Home
+            Getting Started: Getting Started
+            API Reference: API Reference
+            Architecture: Architecture
+            Testing Patterns: Testing Patterns
+            Versioning: Versioning
+            Release Notes: Release Notes
+        - locale: zh-CN
+          name: 中文
+          build: true
+          # Map our zh-CN locale to Material's bundled `zh` UI translation
+          # (Material doesn't ship a separate zh-CN translation file).
+          theme:
+            language: zh
+          nav_translations:
+            Home: 首页
+            Getting Started: 快速开始
+            API Reference: API 参考
+            Architecture: 架构说明
+            Testing Patterns: 测试模式
+            Versioning: 版本策略
+            Release Notes: 发布说明
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference: api-reference.md
+  - Architecture: architecture.md
+  - Testing Patterns: testing-patterns.md
+  - Versioning: versioning.md
+  - Release Notes:
+      - v1.2.0: update/v1.2.0.md
+      - v1.1.0: update/v1.1.0.md

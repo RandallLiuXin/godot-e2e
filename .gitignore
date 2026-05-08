@@ -37,3 +37,7 @@ credentials.json
 # Internal-only docs (ADRs, design notes, lessons) — kept locally, not published
 docs/internal/
 docs/review/
+
+# MkDocs build output and local docs venv
+site/
+.venv-docs/

@@ -1,0 +1,9 @@
+/* Slightly tighter spacing in the landing-page card grid. */
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.4rem;
+}
+
+/* Make code blocks in landing-page cards a touch smaller so the cards stay tidy. */
+.md-typeset .grid.cards code {
+  font-size: 0.85em;
+}
