@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-08
+
+### Added
+- `Locator` — lazy, multi-strategy node references (path / name / group / text / type / script, AND-composable via `filter()`); auto-waits actionability before `click()` on Control targets; new errors `MultipleMatchesError` / `NotActionableError`; new wire commands `find_nodes`, `node_actionable`, `hover_node` (#10)
+- Engine log capture — Godot-side `Logger` subclass intercepts `push_error` / `push_warning` / runtime errors / shader errors (and `print` / `printerr` at info verbosity); Python-side `LogEntry` / `LogVerbosity`, `game.last_logs` / `collected_logs`, `set_log_verbosity` / `set_log_buffer_size` runtime controls, `--e2e-log-verbosity` startup flag, `log_verbosity` launch kwarg; failures include a "captured godot logs" pytest section; every `GodotE2EError` now carries a `logs` attribute (#11)
+- `expect(locator)` auto-retry assertions — matchers `to_have_property`, `to_have_text`, `to_be_visible`, `to_exist`, plus `to_satisfy(predicate, *, description=...)`; client-side polling with configurable timeout / interval; `ExpectationFailedError` dual-inherits `GodotE2EError` and `AssertionError`, carries `actual` / `observation_captured` / `matcher` / `scene_tree` / `last_error` (#12)
+- PEP 561 typed-distribution marker — `python/godot_e2e/py.typed` ships in wheel and sdist so downstream `mypy` / `pyright` / `pyre` consume the inline annotations on `GodotE2E`, `Locator`, `expect`, `LocatorAssertions`, and the typed exception classes instead of falling back to `Any` (#13)
+- Repo-meta baseline: `ROADMAP.md` (+ zh-CN), `docs/versioning.md` (+ zh-CN), `.gitleaks.toml` config, `docs/update/next.template.md`; `docs/internal/` and `docs/review/` gitignored as local-only spaces for ADRs / design notes / reviewer artifacts (#8)
+
+### Changed
+- **Minimum Godot version raised to 4.5** — required by the new log-capture `Logger` API (introduced in Godot 4.5). Per `docs/versioning.md` this is a MINOR bump (#11)
+
 ## [1.1.0] - 2026-04-18
 
 ### Added
@@ -48,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: getting started, API reference, architecture, testing patterns
 - GitHub Actions CI for Linux and Windows
 
-[Unreleased]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/RandallLiuXin/godot-e2e/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/RandallLiuXin/godot-e2e/releases/tag/v1.0.0

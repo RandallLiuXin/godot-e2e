@@ -11,6 +11,7 @@ Steps to follow when publishing a new version of godot-e2e.
 
 2. **Update version numbers**
    - `pyproject.toml` — update `version = "X.Y.Z"`
+   - `python/godot_e2e/__init__.py` — update `__version__ = "X.Y.Z"` (the runtime-readable version; not auto-derived from `pyproject.toml`, easy to miss)
    - `addons/godot_e2e/plugin.cfg` — update `version="X.Y.Z"`
    - `CHANGELOG.md` — move entries from `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
    - `SECURITY.md` — update the supported versions table if needed
