@@ -48,6 +48,9 @@ godot_e2e = "godot_e2e.fixtures"
 [tool.setuptools.packages.find]
 where = ["python"]
 
+[tool.setuptools.package-data]
+godot_e2e = ["py.typed"]
+
 [tool.godot-e2e]
 godot_path = ""
 project_path = ""
