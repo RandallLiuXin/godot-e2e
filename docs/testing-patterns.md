@@ -367,6 +367,79 @@ In CI, upload the `test_output/` directory as a build artifact:
 
 ---
 
+## Seeing engine errors
+
+Game-side `push_error`, `push_warning`, and script runtime errors are normally invisible to the test process — the assertion fails, but you can't tell whether the game silently logged the cause. godot-e2e captures these and surfaces them on test failure under a `captured godot logs` section, alongside `captured stdout` / `captured stderr`.
+
+### Default behaviour
+
+When using the standard `game` / `game_fresh` fixtures, no test code is required:
+
+```python
+def test_button_triggers_save(game):
+    game.locator(text="Save").click()
+    # The game's _on_save_pressed() does push_error("DB write failed") on
+    # error. If the test fails for any reason, that line shows up in the
+    # pytest failure report — no extra assertion needed.
+    assert game.get_property("/root/Menu/StatusLabel", "text") == "Saved"
+```
+
+If `_on_save_pressed` calls `push_error("DB write failed")` and the assertion fires, pytest's failure block ends with:
+
+```
+------------------------------ captured godot logs ------------------------------
+[ERROR] DB write failed (res://scripts/menu.gd:42)
+```
+
+### Asserting on logs explicitly
+
+Sometimes the absence of an error is the test:
+
+```python
+def test_quiet_startup(game):
+    # Drive the game through its startup flow.
+    game.locator(text="Start").click()
+    game.wait_for_node("/root/Game", timeout=2.0)
+
+    errors = [e for e in game.collected_logs if e.level == "error"]
+    assert errors == [], f"unexpected engine errors: {errors!r}"
+```
+
+Or that a specific warning path was exercised:
+
+```python
+def test_invalid_input_logs_warning(game):
+    game.call("/root/Form", "submit", [{"email": "not-an-email"}])
+    msgs = [e.message for e in game.collected_logs if e.level == "warning"]
+    assert any("invalid email" in m.lower() for m in msgs)
+```
+
+### Including print() output
+
+`print()` is excluded by default (it's noisy). Raise verbosity for tests that need it:
+
+```python
+def test_dialogue_progression(game):
+    game.set_log_verbosity("info")
+    game.locator(text="Talk").click()
+    # The dialogue system print()s each line as it advances.
+    lines = [e.message for e in game.collected_logs if e.level == "info"]
+    assert any("Hello, traveler." in line for line in lines)
+```
+
+### Inspecting logs on a raised exception
+
+Every godot-e2e exception carries a `logs` attribute containing the entries that arrived with the failing command's response — useful when the test wraps the call in `pytest.raises`:
+
+```python
+def test_invalid_property_emits_diagnostic(game):
+    with pytest.raises(NodeNotFoundError) as exc_info:
+        game.get_property("/root/Nope", "x")
+    assert any("not found" in e.message.lower() for e in exc_info.value.logs)
+```
+
+---
+
 ## Flaky Test Mitigation
 
 ### Use wait_for_property instead of wait_frames for state changes

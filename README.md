@@ -5,7 +5,7 @@
 [![CI](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/godot-e2e)](https://pypi.org/project/godot-e2e/)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://pypi.org/project/godot-e2e/)
-[![Godot](https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine)](https://godotengine.org/)
+[![Godot](https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine)](https://godotengine.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green)](LICENSE)
 
 Out-of-process E2E testing tool for Godot
@@ -56,10 +56,21 @@ godot-e2e tests/ -v
 
 ---
 
+## Compatibility
+
+| godot-e2e | Godot   | Python |
+| --------- | ------- | ------ |
+| 1.2.x     | 4.5+    | 3.9+   |
+| 1.0–1.1.x | 4.x     | 3.9+   |
+
+Older versions remain published on PyPI and the Godot Asset Library, but only the latest row receives bug fixes. Bumping the minimum supported Godot version is treated as a MINOR bump (see [`docs/versioning.md`](docs/versioning.md)).
+
+---
+
 ## Features
 
 - **Out-of-process** — game runs in a separate process; crashes are isolated and timeouts are safe
-- **No engine modifications** — works with standard Godot 4.x binaries
+- **No engine modifications** — works with standard Godot 4.5+ binaries
 - **Synchronous Python API** — no async/await required in test code
 - **Input simulation** — keyboard, mouse clicks, named actions
 - **Node operations** — get/set properties, call methods, group lookup, node existence checks
@@ -154,9 +165,9 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
-    unzip -q Godot_v4.4-stable_linux.x86_64.zip
-    sudo mv Godot_v4.4-stable_linux.x86_64 /usr/local/bin/godot
+    wget -q https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
+    unzip -q Godot_v4.5-stable_linux.x86_64.zip
+    sudo mv Godot_v4.5-stable_linux.x86_64 /usr/local/bin/godot
 
 - name: Run E2E tests
   run: |
@@ -169,7 +180,7 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_win64.exe.zip" -OutFile godot.zip
+    Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_win64.exe.zip" -OutFile godot.zip
     Expand-Archive godot.zip -DestinationPath C:\godot
   shell: pwsh
 
@@ -178,7 +189,7 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.5-stable_win64.exe
 ```
 
 ### macOS (GitHub Actions)
@@ -186,8 +197,8 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_macos.universal.zip
-    unzip -q Godot_v4.4-stable_macos.universal.zip
+    wget -q https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_macos.universal.zip
+    unzip -q Godot_v4.5-stable_macos.universal.zip
     sudo mv "Godot.app" /Applications/Godot.app
 
 - name: Run E2E tests

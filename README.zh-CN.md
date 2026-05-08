@@ -5,7 +5,7 @@
 [![CI](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/godot-e2e)](https://pypi.org/project/godot-e2e/)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://pypi.org/project/godot-e2e/)
-[![Godot](https://img.shields.io/badge/Godot-4.x-blue?logo=godotengine)](https://godotengine.org/)
+[![Godot](https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine)](https://godotengine.org/)
 [![License](https://img.shields.io/github/license/RandallLiuXin/godot-e2e)](LICENSE)
 
 适用于 Godot 的进程外端到端（E2E）测试工具
@@ -54,10 +54,21 @@ godot-e2e tests/ -v
 
 ---
 
+## 兼容性
+
+| godot-e2e | Godot   | Python |
+| --------- | ------- | ------ |
+| 1.2.x     | 4.5+    | 3.9+   |
+| 1.0–1.1.x | 4.x     | 3.9+   |
+
+旧版本依然保留在 PyPI 与 Godot Asset Library 上，但只有最新一行会收到 bug 修复。提升所需的最低 Godot 版本视为 MINOR 版本号增长（见 [`docs/versioning.md`](docs/versioning.md)）。
+
+---
+
 ## 功能特性
 
 - **进程外运行** -- 游戏在独立进程中运行；崩溃被隔离，超时处理安全可靠
-- **兼容标准 Godot** -- 兼容标准 Godot 4.x 二进制文件
+- **兼容标准 Godot** -- 兼容标准 Godot 4.5+ 二进制文件
 - **同步 Python API** -- 测试代码无需使用 async/await
 - **输入模拟** -- 支持键盘、鼠标点击、命名动作（Named Action）
 - **节点操作** -- 获取/设置属性、调用方法、分组查询、节点存在性检查
@@ -148,9 +159,9 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
-    unzip -q Godot_v4.4-stable_linux.x86_64.zip
-    sudo mv Godot_v4.4-stable_linux.x86_64 /usr/local/bin/godot
+    wget -q https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
+    unzip -q Godot_v4.5-stable_linux.x86_64.zip
+    sudo mv Godot_v4.5-stable_linux.x86_64 /usr/local/bin/godot
 
 - name: Run E2E tests
   run: |
@@ -163,7 +174,7 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_win64.exe.zip" -OutFile godot.zip
+    Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_win64.exe.zip" -OutFile godot.zip
     Expand-Archive godot.zip -DestinationPath C:\godot
   shell: pwsh
 
@@ -172,7 +183,7 @@ def game_session():
     pip install -e .
     godot-e2e tests/e2e/ -v
   env:
-    GODOT_PATH: C:\godot\Godot_v4.4-stable_win64.exe
+    GODOT_PATH: C:\godot\Godot_v4.5-stable_win64.exe
 ```
 
 ### macOS（GitHub Actions）
@@ -180,8 +191,8 @@ def game_session():
 ```yaml
 - name: Install Godot
   run: |
-    wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_macos.universal.zip
-    unzip -q Godot_v4.4-stable_macos.universal.zip
+    wget -q https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_macos.universal.zip
+    unzip -q Godot_v4.5-stable_macos.universal.zip
     sudo mv "Godot.app" /Applications/Godot.app
 
 - name: Run E2E tests

@@ -3,15 +3,18 @@
 ## Parses arguments passed after the `--` separator via OS.get_cmdline_user_args().
 ## Usage:
 ##   var cfg = preload("config.gd")
-##   cfg.is_enabled()   # --e2e flag present?
-##   cfg.get_port()     # --e2e-port=N (default 6008, 0 = auto)
-##   cfg.get_port_file()# --e2e-port-file=PATH (write actual port here)
-##   cfg.get_token()    # --e2e-token=X
-##   cfg.is_logging()   # --e2e-log flag present?
+##   cfg.is_enabled()           # --e2e flag present?
+##   cfg.get_port()             # --e2e-port=N (default 6008, 0 = auto)
+##   cfg.get_port_file()        # --e2e-port-file=PATH (write actual port here)
+##   cfg.get_token()            # --e2e-token=X
+##   cfg.is_logging()           # --e2e-log flag present?
+##   cfg.get_log_verbosity()    # --e2e-log-verbosity={error|warning|info} (default warning)
 
 class_name E2EConfig
 
 const DEFAULT_PORT: int = 6008
+const DEFAULT_LOG_VERBOSITY: String = "warning"
+const _VALID_VERBOSITIES: Array = ["error", "warning", "info"]
 
 static var _parsed: bool = false
 static var _enabled: bool = false
@@ -19,6 +22,7 @@ static var _port: int = DEFAULT_PORT
 static var _token: String = ""
 static var _logging: bool = false
 static var _port_file: String = ""
+static var _log_verbosity: String = DEFAULT_LOG_VERBOSITY
 
 
 static func _ensure_parsed() -> void:
@@ -43,6 +47,13 @@ static func _ensure_parsed() -> void:
 			_token = arg.substr("--e2e-token=".length())
 		elif arg.begins_with("--e2e-port-file="):
 			_port_file = arg.substr("--e2e-port-file=".length())
+		elif arg.begins_with("--e2e-log-verbosity="):
+			var value := arg.substr("--e2e-log-verbosity=".length())
+			if value in _VALID_VERBOSITIES:
+				_log_verbosity = value
+			else:
+				push_warning("godot-e2e: invalid log verbosity '%s', using default '%s'" % [value, DEFAULT_LOG_VERBOSITY])
+				_log_verbosity = DEFAULT_LOG_VERBOSITY
 
 
 static func is_enabled() -> bool:
@@ -68,3 +79,8 @@ static func get_port_file() -> String:
 static func is_logging() -> bool:
 	_ensure_parsed()
 	return _logging
+
+
+static func get_log_verbosity() -> String:
+	_ensure_parsed()
+	return _log_verbosity

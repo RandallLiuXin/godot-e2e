@@ -367,6 +367,78 @@ def test_visual_state(game):
 
 ---
 
+## 看到引擎错误
+
+游戏侧的 `push_error`、`push_warning`、脚本运行时错误对测试进程默认是不可见的——断言失败但你不知道游戏其实静默记录了原因。godot-e2e 会捕获这些错误，并在测试失败时把它们以 `captured godot logs` section 的形式连同 `captured stdout` / `captured stderr` 一起放进 pytest 报告。
+
+### 默认行为
+
+使用标准 `game` / `game_fresh` fixture 时，无需额外测试代码：
+
+```python
+def test_button_triggers_save(game):
+    game.locator(text="Save").click()
+    # 游戏的 _on_save_pressed() 在错误时会 push_error("DB write failed")。
+    # 不论测试因为什么原因失败，那一行都会出现在 pytest 失败报告里。
+    assert game.get_property("/root/Menu/StatusLabel", "text") == "Saved"
+```
+
+如果 `_on_save_pressed` 调了 `push_error("DB write failed")` 且断言失败，pytest 失败块末尾会出现：
+
+```
+------------------------------ captured godot logs ------------------------------
+[ERROR] DB write failed (res://scripts/menu.gd:42)
+```
+
+### 显式断言日志
+
+有时"没有错误"才是测试要检查的事：
+
+```python
+def test_quiet_startup(game):
+    # 把游戏走完启动流程
+    game.locator(text="Start").click()
+    game.wait_for_node("/root/Game", timeout=2.0)
+
+    errors = [e for e in game.collected_logs if e.level == "error"]
+    assert errors == [], f"unexpected engine errors: {errors!r}"
+```
+
+或者断言某条特定的警告路径被走过了：
+
+```python
+def test_invalid_input_logs_warning(game):
+    game.call("/root/Form", "submit", [{"email": "not-an-email"}])
+    msgs = [e.message for e in game.collected_logs if e.level == "warning"]
+    assert any("invalid email" in m.lower() for m in msgs)
+```
+
+### 包含 print() 输出
+
+`print()` 默认不捕获（太吵）。需要时用 `set_log_verbosity` 临时提高：
+
+```python
+def test_dialogue_progression(game):
+    game.set_log_verbosity("info")
+    game.locator(text="Talk").click()
+    # 对话系统会在每行台词推进时 print() 一行
+    lines = [e.message for e in game.collected_logs if e.level == "info"]
+    assert any("Hello, traveler." in line for line in lines)
+```
+
+### 抛异常时检查日志
+
+每个 godot-e2e 异常都带 `logs` 属性，承载失败命令响应里附带的日志条目——测试用 `pytest.raises` 包裹调用时很有用：
+
+```python
+def test_invalid_property_emits_diagnostic(game):
+    with pytest.raises(NodeNotFoundError) as exc_info:
+        game.get_property("/root/Nope", "x")
+    assert any("not found" in e.message.lower() for e in exc_info.value.logs)
+```
+
+---
+
 ## 不稳定测试的应对策略
 
 ### 用 wait_for_property 代替 wait_frames 来等待状态变化

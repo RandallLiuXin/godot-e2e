@@ -7,8 +7,10 @@ extends Node
 
 const Config = preload("config.gd")
 const CommandHandlerScript = preload("command_handler.gd")
+const LogCaptureScript = preload("log_capture.gd")
 
 var _handler = null
+var _log_capture = null
 
 const SERVER_VERSION := "1.1.0"
 
@@ -64,12 +66,24 @@ var _wait_start_ms: int = 0
 # --- Physics frame counter ---
 var _physics_frame_counter: int = 0
 
+# --- Log capture ---
+# Tracks the highest sequence number drained so far for the current
+# connection. Reset to -1 on disconnect so the next session starts fresh
+# (a brand new test run shouldn't inherit logs from a previous client).
+var _last_drain_seq: int = -1
+
 
 func _ready() -> void:
 	if not Config.is_enabled():
 		set_process(false)
 		set_physics_process(false)
 		return
+
+	# Register the engine log capture before anything else can emit. This
+	# way the listen-error path below shows up in the capture buffer too.
+	_log_capture = LogCaptureScript.new()
+	_log_capture.set_verbosity_str(Config.get_log_verbosity())
+	OS.add_logger(_log_capture)
 
 	_handler = CommandHandlerScript.new(self)
 
@@ -192,6 +206,18 @@ func _poll_recv() -> void:
 func _send_response(data: Dictionary) -> void:
 	if _peer == null:
 		return
+	# Drain any engine logs accumulated since the last response and attach
+	# them to this payload. Done at the single send-out site so every
+	# response (success, error, deferred) carries its delta.
+	if _log_capture != null:
+		var drained: Dictionary = _log_capture.drain_since(_last_drain_seq)
+		var entries: Array = drained.get("entries", [])
+		if entries.size() > 0:
+			data["_logs"] = entries
+		var dropped: int = drained.get("dropped", 0)
+		if dropped > 0:
+			data["_logs_dropped"] = dropped
+		_last_drain_seq = drained.get("latest_seq", _last_drain_seq)
 	var json_str := JSON.stringify(data)
 	var payload := json_str.to_utf8_buffer()
 	var header := PackedByteArray()
@@ -406,8 +432,33 @@ func _handle_disconnect() -> void:
 	_authenticated = false
 	_pending_id = null
 	_wait_type = WaitType.NONE
+	_last_drain_seq = -1
 	_state = State.LISTENING
 	_log("reset to LISTENING")
+
+
+# ---------------------------------------------------------------------------
+# Log capture controls (called by command_handler — keeps the handler
+# off _log_capture's private surface)
+# ---------------------------------------------------------------------------
+
+func has_log_capture() -> bool:
+	return _log_capture != null
+
+
+func set_log_verbosity(level: String) -> bool:
+	if _log_capture == null:
+		return false
+	return _log_capture.set_verbosity_str(level)
+
+
+func set_log_buffer_size(size: int) -> bool:
+	if _log_capture == null:
+		return false
+	if size < 1:
+		return false
+	_log_capture.set_max_size(size)
+	return true
 
 
 # ---------------------------------------------------------------------------
