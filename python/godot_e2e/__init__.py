@@ -2,6 +2,7 @@
 
 from .commands import GodotE2E
 from .locator import Locator
+from .expect import expect, LocatorAssertions
 from .types import (
     Vector2,
     Vector2i,
@@ -24,6 +25,7 @@ from .types import (
     CommandError,
     MultipleMatchesError,
     NotActionableError,
+    ExpectationFailedError,
 )
 from .client import GodotClient
 from .launcher import GodotLauncher
@@ -33,6 +35,8 @@ __version__ = "1.1.0"
 __all__ = [
     "GodotE2E",
     "Locator",
+    "expect",
+    "LocatorAssertions",
     "Vector2",
     "Vector2i",
     "Vector3",
@@ -54,6 +58,7 @@ __all__ = [
     "CommandError",
     "MultipleMatchesError",
     "NotActionableError",
+    "ExpectationFailedError",
     "GodotClient",
     "GodotLauncher",
 ]

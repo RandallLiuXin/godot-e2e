@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -265,3 +265,57 @@ class NotActionableError(GodotE2EError):
         self.path = path
         self.reasons = reasons
         self.checks = checks
+
+
+class ExpectationFailedError(GodotE2EError, AssertionError):
+    """Raised when an ``expect(locator).to_*`` matcher fails to hold within
+    its timeout.
+
+    Dual-inherits ``AssertionError`` so pytest renders it the same way it
+    renders a plain ``assert`` failure (the message lands in the assertion
+    section of the test report, not as a generic exception traceback).
+    Catching ``GodotE2EError`` still works for tooling that wants to
+    treat it as a framework error.
+
+    Attributes:
+        actual: Last value observed by the polling loop. Meaningful only
+            when ``observation_captured`` is ``True`` — otherwise defaults
+            to ``None``. For ``to_satisfy``, this is the predicate's
+            return value.
+        observation_captured: ``True`` if at least one poll returned a
+            value (even a falsy or ``None`` one). ``False`` if every
+            poll raised a swallowed lookup error — caused by a node
+            that never resolved, a stable multi-match without
+            ``.first()`` / ``.filter()``, or repeated server errors.
+            Use this to distinguish "the predicate observed ``None``"
+            from "no observation was ever made".
+        matcher: Human-readable matcher description, e.g.
+            ``"to_have_text('Start')"``.
+        scene_tree: Tree dump captured at the moment of failure, depth 4
+            from ``/root``. ``None`` if the dump call itself errored.
+        timeout: The timeout that was exceeded, in seconds.
+        last_error: Most recent ``CommandError`` swallowed during
+            polling, if any. Populated when the server kept rejecting
+            the read (e.g. property doesn't exist on the resolved node,
+            or transient command failures persisted past the timeout).
+            ``None`` when polling never raised ``CommandError``.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        actual=None,
+        observation_captured: bool = False,
+        matcher: str = "",
+        scene_tree=None,
+        timeout: float = 0.0,
+        last_error: Optional[Exception] = None,
+    ):
+        super().__init__(message)
+        self.actual = actual
+        self.observation_captured = observation_captured
+        self.matcher = matcher
+        self.scene_tree = scene_tree
+        self.timeout = timeout
+        self.last_error = last_error
