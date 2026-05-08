@@ -50,3 +50,24 @@ func e2e_trigger_runtime_error() -> void:
 	# Logger is registered, and isn't what this hook is meant to exercise.
 	var x: Node = get_node_or_null("/nonexistent_node_for_test")
 	x.queue_free()
+
+
+# --- Delayed-mutation hooks for the expect() integration tests ---
+# Schedule a property change after `delay` seconds (game time). The test
+# kicks one of these off then immediately calls expect(...).to_*(timeout=2.0)
+# and verifies the assertion polls past the delay and passes — the
+# acceptance criterion for ROADMAP task 3.
+
+func e2e_set_text_after(new_text: String, delay: float) -> void:
+	var t = get_tree().create_timer(delay)
+	t.timeout.connect(func(): $VBox/StatusLabel.text = new_text)
+
+
+func e2e_set_counter_after(value: int, delay: float) -> void:
+	var t = get_tree().create_timer(delay)
+	t.timeout.connect(func(): click_count = value)
+
+
+func e2e_set_button_visible_after(visible: bool, delay: float) -> void:
+	var t = get_tree().create_timer(delay)
+	t.timeout.connect(func(): $VBox/ClickButton.visible = visible)

@@ -664,6 +664,70 @@ Occlusion / hit-test detection is tracked as a separate ROADMAP task.
 
 ---
 
+## expect
+
+`godot_e2e.expect`
+
+Auto-retrying assertions for Locators. Each matcher polls the live game until the condition holds or the timeout elapses, then raises [`ExpectationFailedError`](#expectationfailederror) -- which subclasses both `GodotE2EError` and `AssertionError`, so pytest renders it as a regular assertion failure.
+
+```python
+from godot_e2e import expect
+
+expect(game.locator(name="StatusLabel")).to_have_text("Ready")
+expect(game.locator(name="HUD"), timeout=10.0).to_have_property("score", 100)
+expect(game.locator(group="enemies")).to_satisfy(
+    lambda loc: loc.count() == 0,
+    description="all enemies cleared",
+)
+```
+
+All polling happens client-side; matchers wrap existing Locator methods (`get_property`, `is_visible`, `exists`) so no new wire commands are required. Lookup-style errors raised mid-poll (`NodeNotFoundError`, `MultipleMatchesError`, `CommandError`) are absorbed and the loop keeps polling; this lets matchers ride out transient states like scene reloads.
+
+#### `expect(locator, *, timeout=5.0, poll_interval=0.05) -> LocatorAssertions`
+
+Build a polling assertion handle for `locator`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `locator` | `Locator` | The Locator to assert against. Re-resolved on every poll, so assertions ride scene changes. |
+| `timeout` | `float` | Maximum seconds to keep retrying. Default `5.0`. |
+| `poll_interval` | `float` | Seconds to sleep between polls. Default `0.05`. |
+
+**Raises**: `TypeError` if `locator` is not a `Locator`. `ValueError` if `timeout < 0` or `poll_interval <= 0`.
+
+### Matchers
+
+Each matcher returns `None` on success and raises `ExpectationFailedError` on timeout. The error message includes the last observed value, and `error.scene_tree` carries a depth-4 dump of `/root` for diagnostics.
+
+#### `to_have_property(name, value)`
+
+Pass when `locator.get_property(name) == value`.
+
+#### `to_have_text(text)`
+
+Pass when the target's `text` property equals `text`. Sugar for `to_have_property("text", text)`.
+
+#### `to_be_visible()`
+
+Pass when the target is visible in the scene tree (same check as Locator's auto-wait). Reliable for `Control` and `Node2D` (both use `is_visible_in_tree`). For `Node3D`, `Window`, and plain `Node`, the underlying actionability check refuses with `unclickable_node_type` and visibility cannot be determined through this matcher -- use `to_satisfy(lambda l: l.get_property("visible"))` instead.
+
+#### `to_exist()`
+
+Pass when the locator's query resolves to one or more nodes. Doesn't require a single match -- use `to_satisfy(lambda l: l.count() == 1)` when you specifically need one.
+
+#### `to_satisfy(predicate, *, description=None)`
+
+Pass when `predicate(locator)` returns truthy. The predicate receives the Locator itself, so it can compose any combination of property reads, visibility checks, and `count()` queries.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `predicate` | `Callable[[Locator], Any]` | Truthy return = satisfied. |
+| `description` | `str \| None` | Human-readable label used in the failure message. Without it, the matcher reports `repr(predicate)`, which is rarely useful for lambdas. |
+
+Lookup errors raised inside the predicate (`NodeNotFoundError`, `MultipleMatchesError`, `CommandError`) are caught and treated as "not yet satisfied", so the predicate may freely call methods that require a node to exist.
+
+---
+
 ## GodotClient
 
 `godot_e2e.GodotClient`
@@ -972,6 +1036,22 @@ class NotActionableError(GodotE2EError):
 ```
 
 Raised by `Locator.click()` and `Locator.wait_visible()` when the actionability poll times out. The `reasons` list names every failed check (`"not_visible_in_tree"`, `"mouse_filter_ignore"`, `"outside_viewport"`).
+
+### ExpectationFailedError
+
+```python
+class ExpectationFailedError(GodotE2EError, AssertionError):
+    actual: Any                    # last observed value (meaningful only if observation_captured)
+    observation_captured: bool     # True if at least one poll returned a value
+    matcher: str                   # e.g. "to_have_text('Ready')"
+    scene_tree: dict | None        # depth-4 dump of /root, None on dump failure
+    timeout: float                 # the timeout that was exceeded
+    last_error: Exception | None   # last CommandError swallowed during polling, if any
+```
+
+Raised when an `expect(locator).to_*` matcher fails to hold within its timeout. Dual-inherits `AssertionError` so pytest renders it the same way it renders a plain `assert` failure -- the message lands in the assertion section of the report, not as a generic exception traceback. Catching `GodotE2EError` still works for tooling that wants to treat it as a framework error.
+
+`observation_captured` distinguishes "the poll observed `None`" from "no poll ever returned a value" (a node that never resolved, a stable multi-match without disambiguation, or persistent server errors). `last_error` is set when the polling loop kept catching `CommandError` -- typically a `get_property` against a property that doesn't exist on the resolved node, or transient command failures that never resolved before the timeout.
 
 ---
 

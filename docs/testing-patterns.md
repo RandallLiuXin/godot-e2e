@@ -219,26 +219,43 @@ game.input_mouse_button(400, 300, 1, False)  # Mouse up
 
 ## State Verification
 
-### Prefer wait_for_property over polling
+### Auto-retrying assertions with `expect()`
 
-Instead of reading a property in a loop:
+The cleanest way to assert on game state is `expect(locator).to_*`. Each matcher polls until the condition holds or the timeout elapses, then raises `ExpectationFailedError` -- which pytest renders as a regular assertion failure (`ExpectationFailedError` subclasses `AssertionError`).
 
 ```python
-# Bad: manual polling
-for _ in range(100):
-    game.wait_physics_frames(1)
-    if game.get_property("/root/Main", "score") == 10:
-        break
-else:
-    assert False, "Score never reached 10"
+from godot_e2e import expect
+
+def test_score_reaches_target(game):
+    game.click_at(start_button_pos)
+    expect(game.locator(name="ScoreLabel")).to_have_text("Score: 10")
+    expect(game.locator(name="HUD")).to_have_property("level", 2)
 ```
 
-Use `wait_for_property`, which polls on the Godot side (faster, no network round-trips per poll):
+Why this beats `assert game.get_property(...) == expected`:
+
+- A bare `assert` reads the property *once*. Anything mid-frame (animations, scene transitions, signal handlers running on the next idle) gives a flaky test.
+- `expect(...)` polls every 50 ms (configurable) up to a 5 s default timeout, so it rides out timing variance without needing explicit `wait_physics_frames` calls.
+- Failure messages include the last observed value and a depth-4 scene-tree dump.
+
+For predicates that don't fit the standard matchers, use `to_satisfy` with a description:
 
 ```python
-# Good: server-side polling
+expect(game.locator(group="enemies")).to_satisfy(
+    lambda loc: loc.count() == 0,
+    description="all enemies cleared",
+)
+```
+
+### Server-side polling for equality only: `wait_for_property`
+
+If you want a *single* equality check polled on the Godot side (no per-poll TCP round-trip), `wait_for_property` is still available:
+
+```python
 game.wait_for_property("/root/Main", "score", 10, timeout=5.0)
 ```
+
+Use `expect()` when you need anything beyond equality (visibility, count, custom predicates) or when you want pytest to render the failure as an assertion. Use `wait_for_property` for the hottest equality polls in CPU-sensitive suites.
 
 ### Reading properties after actions
 
