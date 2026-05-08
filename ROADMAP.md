@@ -179,6 +179,36 @@ fired by the game side, and asserts on the returned argument list.
 
 ---
 
+## 7. PEP 561 typed-distribution marker
+
+**Pain:** Public surface (`GodotE2E`, `Locator`, `expect`,
+`LocatorAssertions`, the typed exception classes) ships with inline
+annotations, but the package isn't declared as a typed distribution
+via `py.typed`. Downstream `mypy` / `pyright` / `pyre` users get
+"module is missing type information" warnings and fall back to `Any`,
+which defeats the typing work that's already in the source.
+
+**In scope**
+- Add `python/godot_e2e/py.typed` (empty marker file per PEP 561).
+- Update `pyproject.toml` packaging to ship the marker in both wheel
+  and sdist.
+- Verify the built wheel actually contains the marker
+  (`unzip -l dist/*.whl | grep py.typed`).
+- Smoke-test that a downstream `mypy` run on a script importing our
+  public surface resolves types instead of warning.
+
+**Out of scope**
+- Adding `*.pyi` stub files. Inline annotations are sufficient and
+  doubling them as stubs creates a maintenance fork.
+- Tightening or expanding existing type signatures (separate concern).
+
+**Acceptance:** Installing the built wheel and running `mypy` on a
+script that imports `GodotE2E`, `Locator`, `expect`,
+`ExpectationFailedError`, etc. resolves all types without "module is
+missing type information" warnings.
+
+---
+
 ## Considered and rejected
 
 - **Test event bus / signal-emit-from-test.** Bypasses input simulation,

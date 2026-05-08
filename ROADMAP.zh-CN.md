@@ -128,6 +128,34 @@ godot-e2e 的计划工作，按优先级和依赖关系排序。
 
 ---
 
+## 7. PEP 561 typed-distribution 标记
+
+**痛点：** public 表面（`GodotE2E`、`Locator`、`expect`、
+`LocatorAssertions`、各类型化异常）都有 inline annotation，但包并没有
+通过 `py.typed` 声明为 typed distribution。下游 `mypy` / `pyright` /
+`pyre` 会报 "module is missing type information" 然后回退到 `Any`，
+让源码里已经写好的类型工作前功尽弃。
+
+**范围内**
+- 加 `python/godot_e2e/py.typed`（PEP 561 空标记文件）。
+- 更新 `pyproject.toml` 让 wheel 和 sdist 都打入该标记。
+- 验证构建出的 wheel 真的包含标记
+  （`unzip -l dist/*.whl | grep py.typed`）。
+- 烟测：下游 `mypy` 在 import 我们 public surface 的脚本上能正确解析
+  类型，不再有 "module is missing type information" 警告。
+
+**范围外**
+- 加 `*.pyi` stub 文件。inline annotation 已够用，再叠 stub 会造成
+  双份维护。
+- 收紧或扩展现有类型签名（独立议题）。
+
+**验收：** 安装构建好的 wheel 后，对一个 import 了 `GodotE2E`、
+`Locator`、`expect`、`ExpectationFailedError` 等 public 符号的脚本
+跑 `mypy`，所有类型都能解析，不再报 "module is missing type
+information"。
+
+---
+
 ## 已考虑并拒绝的方案
 
 - **测试事件总线 / 由测试发起信号触发。** 绕过输入模拟，破坏端到端保证。仅通过信号发射可测的行为，可以在用户实际触发入口（按钮、菜单项）已损坏的情况下通过——这是 e2e 工具不该产生的假阳性结果。需要白盒触发的测试可以使用 `call_method`，那是显式 opt-out e2e 语义的入口。
