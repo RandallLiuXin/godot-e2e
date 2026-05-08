@@ -82,6 +82,8 @@ Files to touch:
   - Compatibility matrix: add a new row for `X.Y.x → Godot A.B+`, and close out the previous row's range (e.g. `1.0.x – 1.1.x → Godot 4.x`)
   - Top-of-file Godot badge: bump the version label
   - Any `4.x` mentions in feature bullets / descriptive text
+  - CI install snippets and `GODOT_PATH` examples (Linux / Windows / macOS sections — easy to miss)
+- `.github/workflows/ci.yml` — every Godot download URL, every `Godot_v4.X-stable_*` filename, every `GODOT_PATH=...` env value, and every step name like "Download Godot 4.X stable". CI runs against the version listed here, not `project.godot`'s features array, so missing this lands the merged PR on a red main.
 - `tests/godot_project/project.godot` — `config/features=PackedStringArray("A.B")`
 - `examples/*/godot_project/project.godot` — same field, every example
 - `docs/update/next.md` — call out the bump under a `### Compatibility` heading so it propagates into the changelog

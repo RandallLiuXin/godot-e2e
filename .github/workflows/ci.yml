@@ -48,33 +48,33 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y xvfb wget unzip
 
-      - name: Download Godot 4.4 stable
+      - name: Download Godot 4.5 stable
         run: |
-          wget -q https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
-          unzip Godot_v4.4-stable_linux.x86_64.zip
-          chmod +x Godot_v4.4-stable_linux.x86_64
+          wget -q https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
+          unzip Godot_v4.5-stable_linux.x86_64.zip
+          chmod +x Godot_v4.5-stable_linux.x86_64
 
       - name: Install Python package
         run: pip install -e ".[dev]" && pip install pytest-timeout
 
       - name: Verify Godot binary
-        run: xvfb-run -a ./Godot_v4.4-stable_linux.x86_64 --version
+        run: xvfb-run -a ./Godot_v4.5-stable_linux.x86_64 --version
 
       - name: Run tests
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a python -m pytest tests/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.5-stable_linux.x86_64 xvfb-run -a python -m pytest tests/ -v --timeout=60
 
       - name: Run example tests (platformer)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/platformer/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.5-stable_linux.x86_64 xvfb-run -a godot-e2e examples/platformer/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (minimal)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/minimal/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.5-stable_linux.x86_64 xvfb-run -a godot-e2e examples/minimal/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (ui_testing)
         run: |
-          GODOT_PATH=./Godot_v4.4-stable_linux.x86_64 xvfb-run -a godot-e2e examples/ui_testing/tests/e2e/ -v --timeout=60
+          GODOT_PATH=./Godot_v4.5-stable_linux.x86_64 xvfb-run -a godot-e2e examples/ui_testing/tests/e2e/ -v --timeout=60
 
       - name: Upload test output artifacts
         if: always()
@@ -95,10 +95,10 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Download Godot 4.4 stable
+      - name: Download Godot 4.5 stable
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.4-stable/Godot_v4.4-stable_win64.exe.zip" -OutFile godot.zip
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot-builds/releases/download/4.5-stable/Godot_v4.5-stable_win64.exe.zip" -OutFile godot.zip
           Expand-Archive godot.zip -DestinationPath .
 
       - name: Install Python package
@@ -107,25 +107,25 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
-          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          $env:GODOT_PATH = "Godot_v4.5-stable_win64.exe"
           python -m pytest tests/ -v --timeout=60
 
       - name: Run example tests (platformer)
         shell: pwsh
         run: |
-          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          $env:GODOT_PATH = "Godot_v4.5-stable_win64.exe"
           godot-e2e examples/platformer/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (minimal)
         shell: pwsh
         run: |
-          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          $env:GODOT_PATH = "Godot_v4.5-stable_win64.exe"
           godot-e2e examples/minimal/tests/e2e/ -v --timeout=60
 
       - name: Run example tests (ui_testing)
         shell: pwsh
         run: |
-          $env:GODOT_PATH = "Godot_v4.4-stable_win64.exe"
+          $env:GODOT_PATH = "Godot_v4.5-stable_win64.exe"
           godot-e2e examples/ui_testing/tests/e2e/ -v --timeout=60
 
       - name: Upload test output artifacts
