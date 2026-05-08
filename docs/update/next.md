@@ -25,6 +25,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 - `expect(locator)` auto-retrying assertions — matchers `to_have_property`, `to_have_text`, `to_be_visible`, `to_exist`, plus `to_satisfy(predicate, *, description=...)` for arbitrary Locator-based predicates. Client-side polling with configurable `timeout` / `poll_interval`; failures raise `ExpectationFailedError` (dual-inherits `GodotE2EError` and `AssertionError` so pytest renders it as a regular assertion failure). Failure messages include the last observed value and a depth-4 scene-tree dump; the exception carries `observation_captured` and `last_error` for finer post-mortem. Lookup-style errors raised mid-poll (`NodeNotFoundError`, `MultipleMatchesError`, `CommandError`) are absorbed so matchers ride out scene reloads. ROADMAP task 3. — @LiuXin
 
+- PEP 561 typed-distribution marker — `python/godot_e2e/py.typed` ships in both wheel and sdist, so downstream `mypy` / `pyright` / `pyre` users now resolve the inline annotations on `GodotE2E`, `Locator`, `expect`, `LocatorAssertions`, and the typed exception classes instead of falling back to `Any`. ROADMAP task 7. — @LiuXin
+
 ## Changed
 
 ## Compatibility
