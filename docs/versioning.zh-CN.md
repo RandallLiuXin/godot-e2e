@@ -1,4 +1,4 @@
-[English](versioning.md) | **中文**
+[English](https://github.com/RandallLiuXin/godot-e2e/blob/main/docs/versioning.md) | **中文**
 
 # 版本策略
 

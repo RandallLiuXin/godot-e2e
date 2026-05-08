@@ -1,4 +1,4 @@
-**English** | [中文](versioning.zh-CN.md)
+**English** | [中文](https://github.com/RandallLiuXin/godot-e2e/blob/main/docs/versioning.zh-CN.md)
 
 # Versioning Policy
 
