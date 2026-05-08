@@ -219,26 +219,43 @@ game.input_mouse_button(400, 300, 1, False)  # Mouse up
 
 ## 状态验证
 
-### 优先使用 wait_for_property 而非轮询
+### 用 `expect()` 写自动重试断言
 
-与其在循环中读取属性：
+断言游戏状态最干净的写法是 `expect(locator).to_*`。每个 matcher 都会轮询直到条件满足或超时，超时则抛 `ExpectationFailedError`——pytest 会按普通断言失败渲染（`ExpectationFailedError` 同时继承 `AssertionError`）。
 
 ```python
-# Bad: manual polling
-for _ in range(100):
-    game.wait_physics_frames(1)
-    if game.get_property("/root/Main", "score") == 10:
-        break
-else:
-    assert False, "Score never reached 10"
+from godot_e2e import expect
+
+def test_score_reaches_target(game):
+    game.click_at(start_button_pos)
+    expect(game.locator(name="ScoreLabel")).to_have_text("Score: 10")
+    expect(game.locator(name="HUD")).to_have_property("level", 2)
 ```
 
-不如使用 `wait_for_property`，它在 Godot 端轮询（更快，无需每次轮询的网络往返）：
+为什么比 `assert game.get_property(...) == expected` 好：
+
+- 裸 `assert` 只读一次。任何处于中间帧（动画、场景切换、下一个 idle 帧才执行的信号处理）的状态都会让测试 flaky。
+- `expect(...)` 默认每 50 ms 轮询一次（可配），上限 5 s，可以平滑跨越时序波动，无需显式 `wait_physics_frames`。
+- 失败信息包含最后观测值和深度 4 的场景树 dump。
+
+不在标准 matcher 范围内的判断用 `to_satisfy` 加一个 description：
 
 ```python
-# Good: server-side polling
+expect(game.locator(group="enemies")).to_satisfy(
+    lambda loc: loc.count() == 0,
+    description="all enemies cleared",
+)
+```
+
+### 仅做等值检查时可用 `wait_for_property`（服务端轮询）
+
+如果只需要*一项*等值检查并希望省下每轮 TCP 往返，`wait_for_property` 仍可用：
+
+```python
 game.wait_for_property("/root/Main", "score", 10, timeout=5.0)
 ```
+
+需要等值以外（可见性、计数、自定义 predicate）或希望 pytest 把失败渲染成断言时用 `expect()`；CPU 敏感的测试套件里热路径上的等值轮询用 `wait_for_property`。
 
 ### 操作后读取属性
 
