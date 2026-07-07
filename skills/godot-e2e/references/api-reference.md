@@ -173,8 +173,8 @@ Input Map and reads raw key events directly.
 
 | Method | Use for |
 |---|---|
-| `game.wait_physics_frames(count=1)` | CharacterBody2D movement, collisions, RigidBody, `is_on_floor()`. **Required after movement input before asserting position.** |
-| `game.wait_process_frames(count=1)` | Animation progress, UI transitions, `_process` logic. Does NOT advance physics. |
+| `game.wait_physics_frames(count=1)` | Motion integrated in `_physics_process` (CharacterBody2D, RigidBody, collisions, `is_on_floor()`). **Use after movement input when position updates in `_physics_process`.** |
+| `game.wait_process_frames(count=1)` | Motion integrated in `_process(delta)`, animation progress, UI transitions. Does NOT advance physics. **Use after movement input when position updates in `_process`.** |
 | `game.wait_seconds(seconds)` | Timer-gated / wall-clock-seconds waits. (Game time — affected by `Engine.time_scale`.) |
 | `game.wait_for_node(path, timeout=5.0)` | Block until a node exists. |
 | `game.wait_for_property(path, prop, value, timeout=5.0)` | Server-side poll until property equals value (faster than a Python loop). |
@@ -263,11 +263,11 @@ screenshot-on-failure teardown).
 
 | # | Rule | Why |
 |---|------|-----|
-| 1 | Use `wait_physics_frames` after movement input | `wait_process_frames` does not advance physics — position/collision won't update. |
+| 1 | Match the wait to where motion is integrated | `_physics_process` movement → `wait_physics_frames`; `_process(delta)` movement → `wait_process_frames`. Using the wrong one won't advance the loop that updates position. |
 | 2 | Hold input for sustained movement | `press_action` only taps (~4 frames). Use `input_action(act, True/False)` around a wait. |
 | 3 | `input_action` needs 2 args | `input_action("jump", True)`, not `input_action("jump")`. For a tap use `press_action`. |
 | 4 | Prefer `expect()` over manual wait + assert | Retries with `scene_tree` + `last_error`, renders as a normal pytest assertion. |
-| 5 | Assert **direction**, not exact values | `assert new_x > initial_x`, not `== 450.0`. Physics varies per machine. |
+| 5 | Assert **direction** for continuous physics values | `assert new_x > initial_x`, not `== 450.0` — physics varies per machine. But assert discrete deterministic values (score, lives, label text) **exactly**. |
 | 6 | Locators over hardcoded paths | `get_by_button("Start")` survives tree restructuring; `/root/Main/UI/Menu/StartButton` doesn't. |
 | 7 | Read `.logs` on every failure | Each `GodotE2EError` carries what Godot printed during the failing command. |
 | 8 | Use `wait_seconds`/`wait_for_property` for Timer waits | Frame counts fly by under headless uncapped FPS. |

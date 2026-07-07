@@ -58,8 +58,11 @@ screenshots. Adjust the button text / target node to your project.
 
 ## Physics-Based Testing
 
-Always `wait_physics_frames` for movement — `wait_process_frames` does NOT
-advance physics.
+Match the wait to where the game integrates motion: movement in
+`_physics_process` (CharacterBody2D, RigidBody) needs `wait_physics_frames`;
+movement in `_process(delta)` needs `wait_process_frames` (physics frames do
+NOT advance `_process`-driven position, and vice versa). Check the player
+script if unsure. The example below is a `_physics_process` mover.
 
 ```python
 def test_player_moves_right(game):
@@ -76,8 +79,8 @@ def test_player_moves_right(game):
 
 | Wait | Use for |
 |------|---------|
-| `wait_physics_frames` | CharacterBody2D movement, collision, RigidBody, `is_on_floor()` |
-| `wait_process_frames` | Animation progress, UI transitions, `_process` logic |
+| `wait_physics_frames` | `_physics_process` motion: CharacterBody2D, collision, RigidBody, `is_on_floor()` |
+| `wait_process_frames` | `_process(delta)` motion, animation progress, UI transitions |
 | `wait_seconds` | Timed events, cooldowns (game time) |
 | `wait_for_property` | Any state that will eventually change (preferred over frame counts) |
 
@@ -236,7 +239,9 @@ with GodotE2E.launch("./project", log_verbosity="info") as game:
 
 1. **State-based over time-based** — `wait_for_property(..., True)` beats
    `wait_physics_frames(5); assert ...`.
-2. **Direction over exact values** — `assert new_x > old_x`, not `== 450.0`.
+2. **Direction over exact values for physics floats** — `assert new_x > old_x`,
+   not `== 450.0`. Discrete deterministic values (score, lives, label text)
+   should still be asserted exactly.
 3. **Generous timeouts** — 10s for initial load, 5s for state changes.
 4. **Expose game state as properties** — add `is_on_ground`, `is_dead`,
    `current_level`, `is_paused` rather than inferring from positions.

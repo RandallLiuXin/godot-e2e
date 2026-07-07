@@ -219,8 +219,13 @@ test because it manufactures false confidence.
    `assert get_property(...) == X`.
 3. **No pure existence tests** — `node_exists` / `Locator.exists()` may be a
    *precondition*, never the only assertion.
-4. **Assert direction, not exact values** — `assert new_x > initial_x`, not
-   `== 450.0`. Physics differs per machine.
+4. **Assert direction for continuous physics quantities** — position,
+   velocity, and other float physics values differ per machine, so assert a
+   direction/range (`assert new_x > initial_x`), not `== 450.0`. This does
+   **not** apply to discrete deterministic values: a score, lives count, or a
+   UI label string *should* be asserted exactly (`to_have_property("score", 3)`,
+   `to_have_text("Paused")`) — a direction check there would let real bugs
+   through.
 5. **Drive end states through play** — reach win/lose/exit by playing the
    loop, not by setting the flag that the UI reads.
 
@@ -236,7 +241,7 @@ def test_player_moves_right(game):
     player = game.locator(group="player")
     initial_x = player.get_property("position:x")
     game.input_action("move_right", True)
-    game.wait_physics_frames(10)
+    game.wait_physics_frames(10)  # _process(delta) mover? use wait_process_frames
     game.input_action("move_right", False)
     expect(player).to_satisfy(
         lambda l: l.get_property("position:x") > initial_x,
