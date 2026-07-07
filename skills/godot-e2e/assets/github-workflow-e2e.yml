@@ -1,0 +1,96 @@
+# godot-e2e E2E tests on GitHub Actions (Linux + Windows).
+#
+# Copy to .github/workflows/e2e.yml in your project and adjust:
+#   GODOT_VERSION  : the Godot version your project targets (4.x).
+#   TEST_PATH      : where your e2e tests live (e.g. tests/e2e/).
+#
+# Key facts baked in below:
+#   - godot-e2e does NOT support --headless (Godot bug #73557). On Linux the
+#     tests run under xvfb-run to provide a virtual display. Windows has a
+#     desktop session by default, so no xvfb there.
+#   - The Godot binary is located via the GODOT_PATH env var.
+#   - test_output/ holds screenshots captured on failure; it is uploaded as a
+#     build artifact so you can inspect failures.
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GODOT_VERSION: "4.5-stable"
+  TEST_PATH: "tests/e2e/"
+
+jobs:
+  e2e-linux:
+    name: E2E (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb wget unzip
+
+      - name: Download Godot
+        run: |
+          BASE="https://github.com/godotengine/godot-builds/releases/download"
+          FILE="Godot_v${GODOT_VERSION}_linux.x86_64"
+          wget -q "${BASE}/${GODOT_VERSION}/${FILE}.zip"
+          unzip -q "${FILE}.zip"
+          chmod +x "${FILE}"
+          echo "GODOT_PATH=$PWD/${FILE}" >> "$GITHUB_ENV"
+
+      - name: Install godot-e2e
+        run: pip install godot-e2e pytest-timeout
+
+      - name: Run E2E tests
+        run: xvfb-run -a godot-e2e "$TEST_PATH" -v --timeout=120
+
+      - name: Upload failure screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-output-linux
+          path: test_output/
+          if-no-files-found: ignore
+
+  e2e-windows:
+    name: E2E (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download Godot
+        shell: pwsh
+        run: |
+          $base = "https://github.com/godotengine/godot-builds/releases/download"
+          $file = "Godot_v$env:GODOT_VERSION`_win64.exe"
+          Invoke-WebRequest -Uri "$base/$env:GODOT_VERSION/$file.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath .
+          echo "GODOT_PATH=$PWD\$file" >> $env:GITHUB_ENV
+
+      - name: Install godot-e2e
+        run: pip install godot-e2e pytest-timeout
+
+      - name: Run E2E tests
+        shell: pwsh
+        run: godot-e2e $env:TEST_PATH -v --timeout=120
+
+      - name: Upload failure screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-output-windows
+          path: test_output/
+          if-no-files-found: ignore

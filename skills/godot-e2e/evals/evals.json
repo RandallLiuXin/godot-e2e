@@ -1,0 +1,23 @@
+{
+  "skill_name": "godot-e2e",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I've got a Godot 4.5 platformer in this repo (the project.godot is at the root, entry scene root node is called Main). I keep shipping builds where movement silently breaks. Help me set up godot-e2e from scratch and get one real test passing that proves the player actually moves.",
+      "expected_output": "Walks through addon copy + AutomationServer autoload + configuring the project path (GODOT_E2E_PROJECT_PATH env / @pytest.mark.godot_project / auto-detect) so the built-in `game` fixture works, without redefining game/game_fresh in a conftest. Writes a movement test that holds input via input_action (the named-action path that drives get_axis/get_vector), waits physics frames, and asserts position changed (not an existence smoke test), then runs godot-e2e. References the API reference for correct method names.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Here's my design doc at docs/gdd.md describing the game's features. I want an e2e test suite that checks every feature in the doc is actually implemented and working in the running game, and tells me which ones aren't.",
+      "expected_output": "Builds a coverage checklist mapping each doc feature to a test file, generates one behavior-asserting test per feature plus flow tests reaching win/lose/exit through play, runs the suite, triages failures into test-bugs vs game gaps, prunes orphans, and reports which doc features are gaps. Enforces quality red-lines (no pure existence tests, assert direction).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Add CI so my godot-e2e tests run automatically on every pull request, on both Linux and Windows. My tests are in tests/e2e/ and I'm on Godot 4.5.",
+      "expected_output": "Produces a GitHub Actions workflow that downloads Godot 4.5, installs godot-e2e, runs the suite under xvfb on Linux and natively on Windows, sets GODOT_PATH, uploads test_output/ artifacts, and uses a generous timeout. Notes that --headless is unsupported.",
+      "files": []
+    }
+  ]
+}
