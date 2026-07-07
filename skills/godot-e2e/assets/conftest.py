@@ -5,12 +5,9 @@ the `game` and `game_fresh` fixtures, and `game` reloads the scene between
 tests *and* captures a screenshot to `test_output/` on failure. Prefer
 configuring the project path without a conftest:
 
-  - pyproject.toml:  [tool.pytest.ini_options]
-                     godot_e2e_project_path = "path/to/project"
-  - or pytest.ini:   [pytest]
-                     godot_e2e_project_path = path/to/project
-  - or env var:      GODOT_E2E_PROJECT_PATH=path/to/project
-  - or per test:     @pytest.mark.godot_project("path/to/project")
+  - env var:      GODOT_E2E_PROJECT_PATH=path/to/project
+  - or per test:  @pytest.mark.godot_project("path/to/project")
+  - or nothing:   auto-detect (./godot_project, ../godot_project, .)
 
 Godot binary: set the GODOT_PATH env var (or pass --godot-path to godot-e2e).
 

@@ -67,8 +67,7 @@ real test passing. Stop guessing paths — confirm each step against the project
    ships the `game` and `game_fresh` fixtures out of the box; `game` already
    reloads the scene between tests **and** captures a failure screenshot to
    `test_output/`. Just tell it where `project.godot` lives, easiest first:
-   - `pyproject.toml` → `[tool.pytest.ini_options]` → `godot_e2e_project_path = "path/to/project"` (or the same key in `pytest.ini`);
-   - or the `GODOT_E2E_PROJECT_PATH` env var;
+   - the `GODOT_E2E_PROJECT_PATH` env var;
    - or `@pytest.mark.godot_project("path/to/project")` on a test/module;
    - or nothing, if `project.godot` is auto-detectable (`./godot_project`, `../godot_project`, or `.`).
 

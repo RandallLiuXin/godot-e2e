@@ -246,9 +246,10 @@ at test entry and capture a screenshot on failure to `test_output/`.
 | `game_fresh` | fresh process per test | Slow | Maximum | Tests that mutate autoload / singleton / static state. |
 
 Project-path resolution order: `@pytest.mark.godot_project("path")` marker →
-`godot_e2e_project_path` in `pytest.ini`/`pyproject.toml` →
 `GODOT_E2E_PROJECT_PATH` env → auto-detect (`./godot_project`,
 `../godot_project`, `.`). Godot binary: `GODOT_PATH` env or `--godot-path`.
+(A `godot_e2e_project_path` ini key is read internally but not registered as a
+pytest ini option, so it currently has no effect — don't rely on it.)
 
 Configure the project path with the resolution order above — no conftest
 needed. Add a `conftest.py` (see `assets/conftest.py`) only for extra setup

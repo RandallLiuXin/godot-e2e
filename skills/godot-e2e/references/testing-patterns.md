@@ -32,9 +32,9 @@ The pytest plugin ships two fixtures — don't reimplement them. Both reset
 - **`game_fresh`** — a fresh Godot process per test (~2-5s each). Use for
   tests that mutate global state or for crash-recovery tests.
 
-Point them at your project via `godot_e2e_project_path`
-(`pyproject.toml`/`pytest.ini`), the `GODOT_E2E_PROJECT_PATH` env var, or
-`@pytest.mark.godot_project(...)` — no conftest required.
+Point them at your project via the `GODOT_E2E_PROJECT_PATH` env var,
+`@pytest.mark.godot_project(...)`, or auto-detect (`./godot_project`,
+`../godot_project`, `.`) — no conftest required.
 
 ### Add a custom fixture ONLY by layering on the built-ins
 
