@@ -1,8 +1,8 @@
 # Gitleaks configuration for godot-e2e
 # https://github.com/gitleaks-io/gitleaks
 #
-# This file currently exists as a baseline. CI does not yet run gitleaks;
-# when it does, it should pick up this configuration automatically.
+# The CI "Secret scan" job (.github/workflows/ci.yml) runs gitleaks with this
+# configuration via the GITLEAKS_CONFIG environment variable.
 
 title = "godot-e2e gitleaks config"
 

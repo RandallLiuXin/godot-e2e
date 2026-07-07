@@ -6,6 +6,7 @@ Thank you for your interest in contributing. This document covers everything you
 
 - [Development Environment Setup](#development-environment-setup)
 - [Running Tests](#running-tests)
+- [Continuous Integration](#continuous-integration)
 - [Code Style Conventions](#code-style-conventions)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Reporting Bugs](#reporting-bugs)
@@ -99,6 +100,39 @@ godot-e2e tests/test_client.py -v
 | `-s` | Show print/log output (do not capture) |
 | `-k <expr>` | Run tests whose names match the expression |
 | `--tb=short` | Shorter traceback format |
+
+---
+
+## Continuous Integration
+
+Every push to `main` and every pull request targeting `main` runs GitHub Actions.
+Results appear as status checks on the PR and under the repository's
+[**Actions**](https://github.com/RandallLiuXin/godot-e2e/actions) tab. A failing
+check blocks nothing by policy, but PRs are expected to be green before merge.
+
+### What runs on a pull request (`.github/workflows/ci.yml`)
+
+| Check | What it does | Reproduce locally |
+|-------|--------------|-------------------|
+| **Lint Python** | Compiles every module and runs `ruff` (rules `E`, `F`) | `pip install -e ".[lint]"` then `python -m compileall python/godot_e2e` and `ruff check python/` |
+| **Build & package check** | Builds the sdist + wheel and validates metadata | `pip install build twine` then `python -m build` and `twine check dist/*` |
+| **Secret scan** | Runs `gitleaks` using `.gitleaks.toml` | `gitleaks detect --config .gitleaks.toml` |
+| **Test (Linux)** / **Test (Windows)** | Downloads Godot 4.5, runs the unit suite and all example E2E suites | See [Running Tests](#running-tests); set `GODOT_PATH` to your Godot binary |
+
+If a docs file changes, `.github/workflows/docs.yml` also builds the site with
+`mkdocs build --strict` on the PR (no deploy). Reproduce with
+`pip install -r requirements-docs.txt` then `mkdocs build --strict`.
+
+### What runs after merge / on release
+
+- **Docs deploy** — pushing docs changes to `main` (or a manual *Run workflow*)
+  builds and publishes the site to GitHub Pages.
+- **Publish to PyPI** (`.github/workflows/publish.yml`) — pushing a `v*` tag
+  builds the package and publishes it to PyPI via Trusted Publishing.
+
+> Type checking with `mypy` is not yet part of the gate. The package ships a
+> `py.typed` marker, so adding a `mypy` job is a natural next step once the
+> current type errors are resolved.
 
 ---
 

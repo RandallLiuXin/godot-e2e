@@ -8,6 +8,14 @@ on:
       - mkdocs.yml
       - requirements-docs.txt
       - .github/workflows/docs.yml
+  # Validate the strict build on PRs that touch docs, without deploying.
+  pull_request:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - requirements-docs.txt
+      - .github/workflows/docs.yml
   workflow_dispatch:
 
 # Allow this workflow to publish to GitHub Pages via the modern Pages
@@ -46,12 +54,16 @@ jobs:
         run: mkdocs build --strict
 
       - name: Upload Pages artifact
+        # Only needed for the deploy step, which does not run on PRs.
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
     name: Deploy to GitHub Pages
+    # Never deploy from a PR build — only from main pushes / manual dispatch.
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

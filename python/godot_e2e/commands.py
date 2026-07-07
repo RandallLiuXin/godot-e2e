@@ -2,10 +2,9 @@
 
 from .client import GodotClient
 from .types import (
-    serialize, deserialize, TimeoutError, NodeNotFoundError,
+    serialize, deserialize, TimeoutError,
     ConnectionLostError, CommandError
 )
-import time
 
 
 class GodotE2E:
