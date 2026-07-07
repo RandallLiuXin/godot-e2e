@@ -69,8 +69,12 @@ jobs:
           fetch-depth: 0  # gitleaks scans full history on push
 
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        # v3 runs on Node 24; v2 was a Node 20 action, which GitHub-hosted
+        # runners are phasing out. No license is needed for personal/public
+        # repos — organizations must add a free GITLEAKS_LICENSE secret.
+        uses: gitleaks/gitleaks-action@v3
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
   test-linux:
