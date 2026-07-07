@@ -158,8 +158,11 @@ Locator would just add ceremony (root-level singletons, autoloads, the
 | `game.input_mouse_button(x, y, button=1, pressed=True)` | Low-level mouse button. |
 | `game.input_mouse_motion(x, y, relative_x=0, relative_y=0)` | Mouse motion. |
 
-For sustained movement: `input_action(act, True)` → `wait_physics_frames(N)`
-→ `input_action(act, False)`. `press_action` alone only taps.
+For sustained movement: `input_action(act, True)` → wait → `input_action(act,
+False)`. Pick the wait by where the game integrates motion —
+`wait_physics_frames(N)` for a `_physics_process` mover, `wait_process_frames(N)`
+for a `_process(delta)` mover (see Frame & Time Synchronization below).
+`press_action` alone only taps.
 
 `input_action` injects an `InputEventAction` via `Input.parse_input_event`, so
 it updates the engine's action state: `Input.is_action_pressed`,
