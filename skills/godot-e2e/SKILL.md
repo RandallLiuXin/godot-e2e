@@ -42,8 +42,8 @@ calls are correct. Reach for `references/testing-patterns.md` for recipes
 
 ## A. Quick Setup
 
-Goal: addon installed, autoload registered, `conftest.py` in place, one real
-test passing. Stop guessing paths — confirm each step against the project.
+Goal: addon installed, autoload registered, the project path configured, one
+real test passing. Stop guessing paths — confirm each step against the project.
 
 1. **Confirm prerequisites.** Python 3.9+, `pip install godot-e2e`, and a
    Godot 4.x binary. Find the binary path; the suite locates it via the
@@ -63,11 +63,20 @@ test passing. Stop guessing paths — confirm each step against the project.
    `run/main_scene`; open that `.tscn` and note its **root node name** (often
    `Main`). Every fixture waits on `/root/<RootNodeName>`.
 
-5. **Add `conftest.py`.** Copy `assets/conftest.py` into the test directory
-   (e.g. `tests/e2e/`), set `GODOT_PROJECT` to the dir containing
-   `project.godot`, and replace `/root/Main` with the real entry-scene root.
-   (The plugin can auto-detect and provides `game`/`game_fresh` without a
-   conftest; keep the file when you want explicit control.)
+5. **Point the suite at the project — no conftest needed.** The pytest plugin
+   ships the `game` and `game_fresh` fixtures out of the box; `game` already
+   reloads the scene between tests **and** captures a failure screenshot to
+   `test_output/`. Just tell it where `project.godot` lives, easiest first:
+   - `pyproject.toml` → `[tool.pytest.ini_options]` → `godot_e2e_project_path = "path/to/project"` (or the same key in `pytest.ini`);
+   - or the `GODOT_E2E_PROJECT_PATH` env var;
+   - or `@pytest.mark.godot_project("path/to/project")` on a test/module;
+   - or nothing, if `project.godot` is auto-detectable (`./godot_project`, `../godot_project`, or `.`).
+
+   Only write a `conftest.py` when you need something the built-ins don't give
+   you (e.g. a "skip the menu" fixture). If you do, **layer on top of the
+   built-in `game`** — do NOT redefine `game`/`game_fresh` yourself, or you
+   silently lose the screenshot-on-failure teardown. `assets/conftest.py` shows
+   the additive pattern.
 
 6. **Write one real test** (not a smoke test — apply the Quality Standards
    below) and run it:
@@ -257,6 +266,8 @@ def test_player_moves_right(game):
   input, waits, scenes, log capture, types, exceptions, critical rules.
 - `references/testing-patterns.md` — recipes by category, flaky-test
   mitigation, keep-alive/pause survival, batch ops, CI variants, gotchas.
-- `assets/conftest.py` — fixture template.
+- `assets/conftest.py` — optional advanced template: project-path config plus
+  an additive "skip the menu" fixture that layers on the built-in `game`
+  (keeping its screenshot-on-failure teardown). Not needed for basic setup.
 - `assets/github-workflow-e2e.yml` — GitHub Actions CI template.
 - `assets/coverage-checklist.md` — doc→suite coverage contract template.

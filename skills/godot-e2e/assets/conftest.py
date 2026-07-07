@@ -1,48 +1,40 @@
-"""godot-e2e fixtures for this project.
+"""Optional godot-e2e conftest for this project.
 
-Copy this file to your test directory (e.g. tests/e2e/conftest.py) and adjust:
-  - GODOT_PROJECT : path to the directory containing project.godot
-  - "/root/Main"  : your entry-scene root node — read it from project.godot's
-                    run/main_scene (the .tscn's root node name).
+You usually do NOT need this file. The godot-e2e pytest plugin already ships
+the `game` and `game_fresh` fixtures, and `game` reloads the scene between
+tests *and* captures a screenshot to `test_output/` on failure. Prefer
+configuring the project path without a conftest:
 
-You usually do NOT need this file: the godot-e2e pytest plugin already
-provides `game` and `game_fresh` fixtures and can auto-detect the project.
-Keep a custom conftest.py when you want explicit control over the project
-path, the entry-scene wait path, or a "skip the menu" fixture.
+  - pyproject.toml:  [tool.pytest.ini_options]
+                     godot_e2e_project_path = "path/to/project"
+  - or pytest.ini:   [pytest]
+                     godot_e2e_project_path = path/to/project
+  - or env var:      GODOT_E2E_PROJECT_PATH=path/to/project
+  - or per test:     @pytest.mark.godot_project("path/to/project")
 
-Godot binary: set GODOT_PATH env var (or pass --godot-path to godot-e2e).
+Godot binary: set the GODOT_PATH env var (or pass --godot-path to godot-e2e).
+
+Keep this file only when you need something the built-ins don't provide — the
+common case being a "skip the menu" fixture that starts each gameplay test
+already past the main menu.
+
+IMPORTANT: do NOT redefine `game` / `game_fresh` here. Overriding them drops
+the plugin's screenshot-on-failure teardown (see godot_e2e/fixtures.py).
+Instead, build ADDITIVE fixtures that depend on the built-in `game`, as below —
+the built-in teardown still runs, so failure screenshots keep working.
 """
-import os
-
 import pytest
 
-from godot_e2e import GodotE2E
-
-# Directory that contains project.godot. Adjust the relative hop as needed.
-GODOT_PROJECT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..")
-)
-
-
-@pytest.fixture(scope="module")
-def _game_process():
-    """One Godot process shared across all tests in a module."""
-    with GodotE2E.launch(GODOT_PROJECT, timeout=15.0) as game:
-        game.wait_for_node("/root/Main", timeout=10.0)
-        yield game
-
 
 @pytest.fixture(scope="function")
-def game(_game_process):
-    """Reload the entry scene before each test (fast, good isolation)."""
-    _game_process.reload_scene()
-    _game_process.wait_for_node("/root/Main", timeout=5.0)
-    yield _game_process
+def game_playing(game):
+    """Gameplay-ready fixture: reuse the built-in `game`, then navigate past
+    the menu so each test starts in the scene under test.
 
-
-@pytest.fixture(scope="function")
-def game_fresh():
-    """Fresh Godot process per test — use for tests that mutate autoload state."""
-    with GodotE2E.launch(GODOT_PROJECT, timeout=15.0) as game:
-        game.wait_for_node("/root/Main", timeout=10.0)
-        yield game
+    Depends on the built-in `game` fixture, so scene-reload isolation and the
+    screenshot-on-failure teardown are inherited — you only add the navigation.
+    Adjust the button text / target node to match your project.
+    """
+    game.get_by_button("Start Game").click()
+    game.wait_for_node("/root/Main/Level", timeout=5.0)
+    return game

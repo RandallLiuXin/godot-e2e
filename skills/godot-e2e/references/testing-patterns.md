@@ -21,53 +21,38 @@ surface, see `api-reference.md`.
 
 ## Fixture Strategies
 
-### Strategy 1: Scene Reload (default, recommended)
+### Use the built-in fixtures (default, recommended)
 
-One Godot process per test module; scene reloaded before each test.
+The pytest plugin ships two fixtures — don't reimplement them. Both reset
+`collected_logs` at entry and capture a failure screenshot to `test_output/`.
 
-```python
-@pytest.fixture(scope="module")
-def _game_process():
-    with GodotE2E.launch(PROJECT_PATH, timeout=15.0) as game:
-        game.wait_for_node("/root/Main", timeout=10.0)
-        yield game
+- **`game`** — one Godot process per module, scene reloaded before each test.
+  Fast, good isolation. **Limitation:** global state (autoloads, singletons,
+  static vars) persists between tests.
+- **`game_fresh`** — a fresh Godot process per test (~2-5s each). Use for
+  tests that mutate global state or for crash-recovery tests.
 
-@pytest.fixture(scope="function")
-def game(_game_process):
-    _game_process.reload_scene()
-    _game_process.wait_for_node("/root/Main", timeout=5.0)
-    yield _game_process
-```
+Point them at your project via `godot_e2e_project_path`
+(`pyproject.toml`/`pytest.ini`), the `GODOT_E2E_PROJECT_PATH` env var, or
+`@pytest.mark.godot_project(...)` — no conftest required.
 
-Resets the scene tree, node properties, and script variables. **Limitation:**
-global state (autoloads, singletons, static vars) persists between tests.
+### Add a custom fixture ONLY by layering on the built-ins
 
-### Strategy 2: Fresh Process (maximum isolation)
+If you need extra setup (e.g. skip the menu), build a fixture that **depends
+on** the built-in `game` — never redefine `game`/`game_fresh`, or you drop the
+screenshot-on-failure teardown that lives in their teardown.
 
 ```python
 @pytest.fixture(scope="function")
-def game_fresh():
-    with GodotE2E.launch(PROJECT_PATH, timeout=15.0) as game:
-        game.wait_for_node("/root/Main", timeout=10.0)
-        yield game
+def game_playing(game):                 # reuse the built-in `game`
+    game.get_by_button("Start Game").click()
+    game.wait_for_node("/root/Main/Level", timeout=5.0)
+    return game                         # built-in teardown (screenshot) still runs
 ```
 
-For tests that mutate global state or crash-recovery tests. ~2-5s per test.
-
-### Skip the main menu — jump straight to the scene under test
-
-```python
-@pytest.fixture(scope="module")
-def _game_process():
-    with GodotE2E.launch(PROJECT_PATH) as game:
-        game.wait_for_node("/root", timeout=10.0)
-        game.change_scene("res://levels/level1.tscn")
-        game.wait_for_node("/root/Level1", timeout=5.0)
-        yield game
-```
-
-For games with a menu in front of gameplay, add a `game_playing` fixture that
-navigates past the menu so each gameplay test starts in the right state.
+For a menu-in-front-of-gameplay game this starts every gameplay test already
+in the scene under test, while keeping reload isolation and failure
+screenshots. Adjust the button text / target node to your project.
 
 ---
 
@@ -358,9 +343,11 @@ python -c "from godot_e2e import GodotE2E; g=GodotE2E.connect(port=6008); print(
 
 1. **press_action vs held input** — `press_action` only taps. Hold with
    `input_action(act, True)` / `wait` / `input_action(act, False)`.
-2. **input_action vs input_key** — `input_action` does NOT drive
-   `Input.get_axis()` / `Input.get_vector()`. Use `input_key` with the mapped
-   scancode for those.
+2. **input_action vs input_key** — `input_action` injects an
+   `InputEventAction` and DOES drive the whole action API, including
+   `Input.is_action_pressed`, `get_action_strength`, `get_axis`, and
+   `get_vector`. Use it for movement by default. Reach for `input_key` only
+   when the game reads raw `InputEventKey` directly (bypassing the Input Map).
 3. **Signal timing** — `wait_for_signal` only catches signals emitted after
    the listener registers. Use `wait_for_property` for state assertions.
 4. **Exact position assertions** — assert direction or ranges, not equality.

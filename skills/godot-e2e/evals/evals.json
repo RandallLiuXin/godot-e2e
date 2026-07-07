@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "I've got a Godot 4.5 platformer in this repo (the project.godot is at the root, entry scene root node is called Main). I keep shipping builds where movement silently breaks. Help me set up godot-e2e from scratch and get one real test passing that proves the player actually moves.",
-      "expected_output": "Walks through addon copy + AutomationServer autoload + conftest.py with the right entry-scene path, writes a movement test that holds input, waits physics frames, and asserts position changed (not an existence smoke test), and runs godot-e2e. References the API reference for correct method names.",
+      "expected_output": "Walks through addon copy + AutomationServer autoload + configuring the project path (godot_e2e_project_path / GODOT_E2E_PROJECT_PATH / marker) so the built-in `game` fixture works, without redefining game/game_fresh in a conftest. Writes a movement test that holds input via input_action (the named-action path that drives get_axis/get_vector), waits physics frames, and asserts position changed (not an existence smoke test), then runs godot-e2e. References the API reference for correct method names.",
       "files": []
     },
     {

@@ -152,7 +152,7 @@ Locator would just add ceremony (root-level singletons, autoloads, the
 | `game.press_action(action_name, strength=1.0)` | Press **and** release (a tap, ~4 physics frames). |
 | `game.input_action(action_name, pressed, strength=1.0)` | Set action state. **Needs 2 args.** Use `True`/`False` to hold/release for sustained movement. |
 | `game.press_key(keycode)` | Tap a key. |
-| `game.input_key(keycode, pressed, physical=False)` | Hold/release a key. Use this (not `input_action`) when game code reads `Input.get_axis()` / `Input.get_vector()`. |
+| `game.input_key(keycode, pressed, physical=False)` | Hold/release a raw keyboard key. Use this only when the game reads raw `InputEventKey` in `_input`/`_unhandled_input`, or you're deliberately testing a physical key. For anything mapped to an **Input Map action** — including `Input.get_axis()` / `Input.get_vector()`, which read action strengths — prefer `input_action`. |
 | `game.click(x, y, button=1)` | Click a screen coordinate. |
 | `game.click_node(path)` | Click at a node's screen position. |
 | `game.input_mouse_button(x, y, button=1, pressed=True)` | Low-level mouse button. |
@@ -160,6 +160,12 @@ Locator would just add ceremony (root-level singletons, autoloads, the
 
 For sustained movement: `input_action(act, True)` → `wait_physics_frames(N)`
 → `input_action(act, False)`. `press_action` alone only taps.
+
+`input_action` injects an `InputEventAction` via `Input.parse_input_event`, so
+it updates the engine's action state: `Input.is_action_pressed`,
+`get_action_strength`, `get_axis`, and `get_vector` all see it. This is the
+default for movement — reach for `input_key` only when the game bypasses the
+Input Map and reads raw key events directly.
 
 ---
 
@@ -244,9 +250,11 @@ Project-path resolution order: `@pytest.mark.godot_project("path")` marker →
 `GODOT_E2E_PROJECT_PATH` env → auto-detect (`./godot_project`,
 `../godot_project`, `.`). Godot binary: `GODOT_PATH` env or `--godot-path`.
 
-A custom `conftest.py` (see `assets/conftest.py`) is recommended when you
-need explicit control over the project path, the entry-scene wait path, or a
-"skip the menu" fixture.
+Configure the project path with the resolution order above — no conftest
+needed. Add a `conftest.py` (see `assets/conftest.py`) only for extra setup
+such as a "skip the menu" fixture, and build it **on top of** the built-in
+`game` (never redefine `game`/`game_fresh`, or you lose the
+screenshot-on-failure teardown).
 
 ---
 
