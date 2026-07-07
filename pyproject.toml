@@ -38,6 +38,7 @@ Changelog = "https://github.com/RandallLiuXin/godot-e2e/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+lint = ["ruff>=0.5"]
 
 [project.scripts]
 godot-e2e = "godot_e2e.cli:main"
@@ -50,6 +51,21 @@ where = ["python"]
 
 [tool.setuptools.package-data]
 godot_e2e = ["py.typed"]
+
+[tool.ruff]
+# Match the minimum supported runtime so lint results reflect real targets.
+target-version = "py39"
+line-length = 100
+src = ["python"]
+
+[tool.ruff.lint]
+# Conservative baseline: pyflakes (F) + pycodestyle errors (E). Kept
+# intentionally small so CI stays a signal, not noise. Import sorting (I)
+# and formatting are not enforced yet — the codebase is not ruff-formatted.
+select = ["E", "F"]
+# The line-length rule (E501) is style-only and would flag docstrings; leave
+# it out of the gate until the codebase is formatted.
+ignore = ["E501"]
 
 [tool.godot-e2e]
 godot_path = ""

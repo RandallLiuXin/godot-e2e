@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI overhaul (`.github/workflows/ci.yml`): the lint job now installs `ruff` (new `lint` extra) and runs a real `ruff check` plus `compileall` over the whole package, replacing the previous no-op (`ruff … || true`) and stale hand-maintained `py_compile` file list. Added a `build-check` job (`python -m build` + `twine check`) and a `secret-scan` job (gitleaks, wired to `.gitleaks.toml`) so packaging and secret regressions are caught on PRs; added run-level `concurrency` cancellation
+- Docs workflow now builds with `mkdocs build --strict` on pull requests that touch docs (validation only — deploy still runs solely from `main` / manual dispatch)
+- Documented the CI checks and how to reproduce each one locally in `CONTRIBUTING.md`
+- Added a minimal `[tool.ruff]` configuration (rules `E`, `F`) to `pyproject.toml`
+
+### Removed
+- Dropped two unused imports (`NodeNotFoundError`, `time`) in `commands.py` flagged by `ruff`
+
 ## [1.2.0] - 2026-05-08
 
 ### Added
