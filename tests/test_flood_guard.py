@@ -12,10 +12,13 @@ import struct
 
 import pytest
 
+import inspect
+
 from godot_e2e import (
     EngineErrorFloodDetector,
     EngineErrorFloodError,
     FloodStats,
+    GodotE2E,
     LogEntry,
 )
 from godot_e2e.client import GodotClient
@@ -413,3 +416,137 @@ def test_terminate_process_noop_when_no_process():
     launcher = GodotLauncher()
     launcher.process = None
     launcher._terminate_process()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Runtime reconfiguration — EngineErrorFloodDetector.configure
+# ---------------------------------------------------------------------------
+
+def test_configure_partial_updates_only_given_fields():
+    det = EngineErrorFloodDetector(window_seconds=2.0, error_threshold=100)
+    det.configure(error_threshold=300)
+    assert det.error_threshold == 300
+    assert det.window_seconds == 2.0  # untouched
+    assert det.enabled is True
+    det.configure(window_seconds=5.0)
+    assert det.window_seconds == 5.0
+    assert det.error_threshold == 300  # still
+
+def test_configure_toggle_enabled():
+    det = EngineErrorFloodDetector(error_threshold=1)
+    det.configure(enabled=False)
+    assert det.enabled is False
+    det.configure(enabled=True)
+    assert det.enabled is True
+
+def test_configure_rejects_invalid_values():
+    det = EngineErrorFloodDetector()
+    with pytest.raises(ValueError, match="window_seconds"):
+        det.configure(window_seconds=0)
+    with pytest.raises(ValueError, match="error_threshold"):
+        det.configure(error_threshold=0)
+
+
+def test_disabled_detector_never_trips_and_records_nothing():
+    clock = _FakeClock()
+    det = EngineErrorFloodDetector(
+        window_seconds=2.0, error_threshold=5, enabled=False, time_source=clock
+    )
+    # Far past threshold, but disabled → no trip, no state accumulated.
+    assert det.observe(_errors_as_entries(100), 100) is None
+    # Re-enabling starts from a clean window (the disabled observe recorded
+    # nothing), so a sub-threshold batch does not trip.
+    det.configure(enabled=True)
+    clock.advance(0.05)
+    assert det.observe(_errors_as_entries(4), 0) is None
+    clock.advance(0.05)
+    assert det.observe(_errors_as_entries(1), 0) is not None  # now 5 → trips
+
+
+# ---------------------------------------------------------------------------
+# Runtime reconfiguration — GodotE2E.set_flood_detection
+# ---------------------------------------------------------------------------
+
+def test_set_flood_detection_retunes_threshold_live():
+    clock = _FakeClock()
+    client = _make_client([
+        {"id": 1, "ok": True, "_logs": _errors(60)},
+        {"id": 2, "ok": True, "_logs": _errors(60)},
+    ])
+    _arm(client, threshold=50, clock=clock)
+    game = GodotE2E(client)
+
+    # Raise the bar above 60 before the first (60-error) response → no trip.
+    game.set_flood_detection(error_threshold=1000)
+    resp = client.send_command("first")
+    assert resp == {"id": 1, "ok": True}
+
+    # Lower it back below 60 → the next 60-error response trips.
+    game.set_flood_detection(error_threshold=50)
+    clock.advance(0.05)
+    with pytest.raises(EngineErrorFloodError):
+        client.send_command("second")
+
+
+def test_set_flood_detection_disable_opts_out():
+    client = _make_client([{"id": 1, "ok": True, "_logs": _errors(500)}])
+    _arm(client, threshold=50)
+    game = GodotE2E(client)
+    game.set_flood_detection(enabled=False)
+    resp = client.send_command("noop")  # must NOT raise despite 500 errors
+    assert resp == {"id": 1, "ok": True}
+
+
+def test_set_flood_detection_lazily_arms_when_unarmed():
+    # A connect()-style client with no detector: configuring one arms it.
+    client = _make_client([{"id": 1, "ok": True, "_logs": _errors(10)}])
+    game = GodotE2E(client)
+    assert client._flood_detector is None
+    game.set_flood_detection(error_threshold=5)
+    assert client._flood_detector is not None
+    with pytest.raises(EngineErrorFloodError):
+        client.send_command("noop")  # 10 errors ≥ 5
+
+
+def test_set_flood_detection_rejects_invalid_values():
+    client = _make_client([])
+    game = GodotE2E(client)
+    with pytest.raises(ValueError, match="error_threshold"):
+        game.set_flood_detection(error_threshold=0)
+
+
+# ---------------------------------------------------------------------------
+# Default threshold is 100 across the public surface
+# ---------------------------------------------------------------------------
+
+def test_default_threshold_is_100():
+    assert EngineErrorFloodDetector().error_threshold == 100
+    assert inspect.signature(
+        GodotE2E.launch).parameters["flood_error_threshold"].default == 100
+    from godot_e2e.launcher import GodotLauncher
+    assert inspect.signature(
+        GodotLauncher.launch).parameters["flood_error_threshold"].default == 100
+
+
+# ---------------------------------------------------------------------------
+# Message wording — dropped-driven flood with no captured error
+# ---------------------------------------------------------------------------
+
+def test_dropped_only_flood_message_does_not_claim_error():
+    client = _make_client([{"id": 1, "ok": True, "_logs_dropped": 60}])
+    _arm(client, threshold=50)
+    with pytest.raises(EngineErrorFloodError) as exc_info:
+        client.send_command("noop")
+    msg = str(exc_info.value)
+    assert exc_info.value.error_count == 0
+    assert "log flood" in msg          # softened headline
+    assert "error flood" not in msg    # must not claim an error flood
+    assert "warning/print" in msg      # points triage at the real cause
+
+
+def test_error_driven_flood_message_still_says_error():
+    client = _make_client([{"id": 1, "ok": True, "_logs": _errors(60)}])
+    _arm(client, threshold=50)
+    with pytest.raises(EngineErrorFloodError) as exc_info:
+        client.send_command("noop")
+    assert "error flood" in str(exc_info.value)

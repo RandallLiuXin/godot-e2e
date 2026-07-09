@@ -541,6 +541,32 @@ Raises `ValueError` for `size < 1` at the Python boundary; the wire side returns
 
 When the buffer overflows between drains, the response carries a `_logs_dropped` count which the client surfaces as a single synthetic warning entry (`"<N log entries dropped due to capture buffer overflow>"`) appended uniformly to `last_logs`, `collected_logs`, and any raised exception's `logs`.
 
+#### `set_flood_detection(*, enabled=None, window_seconds=None, error_threshold=None)`
+
+Adjust the **engine-error-flood guard** at runtime. A non-fatal GDScript error in `_process` / `_physics_process` re-fires every frame; under headless (vsync-off) Godot this becomes hundreds-to-thousands of identical error lines per second, and an unattended run would otherwise idle to its full timeout while the game spins. The guard watches the error / `_logs_dropped` signal piggybacked on command responses over a sliding wall-clock window; once the combined error + dropped count in the window crosses the threshold, Godot is force-killed and the next command raises [`EngineErrorFloodError`](#exceptions).
+
+The guard is **on by default**. Its startup parameters come from the `launch()` kwargs; this method retunes them mid-run (any argument left `None` is unchanged):
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `enabled` | `bool` | `True` | Turn the guard on/off. |
+| `window_seconds` | `float` | `2.0` | Sliding-window duration. |
+| `error_threshold` | `int` | `100` | Combined error + dropped-log entries in the window that trip the guard. |
+
+Raises `ValueError` for `window_seconds <= 0` or `error_threshold < 1`. The same three knobs are settable at launch via `GodotE2E.launch(..., flood_detection=..., flood_window_seconds=..., flood_error_threshold=...)`.
+
+```python
+def test_noisy_game_needs_a_higher_bar(game):
+    game.set_flood_detection(error_threshold=300)  # this game logs a lot
+    ...
+
+def test_intentionally_error_heavy(game):
+    game.set_flood_detection(enabled=False)  # opt this test out of the guard
+    ...
+```
+
+Detection only advances while commands round-trip (e.g. an `expect()` / `wait_for_*` poll). A flood driven purely by dropped log lines — a `push_warning` / `print` storm with no captured error — is reported as a "log flood" rather than an "error flood" so triage isn't sent chasing a runtime error that doesn't exist.
+
 ---
 
 ### Misc
@@ -1005,6 +1031,18 @@ class ConnectionLostError(GodotE2EError):
 ```
 
 Raised by: `send_command` (and any high-level method that sends commands).
+
+### EngineErrorFloodError
+
+```python
+class EngineErrorFloodError(GodotE2EError):
+    error_count: int      # error-level entries in the detection window
+    dropped_count: int    # ring-buffer overflow drops in the window
+    window_seconds: float # the sliding-window duration
+    samples: list[LogEntry]  # a few representative error lines from the flood
+```
+
+Raised by the next command after the [flood guard](#set_flood_detection-enablednone-window_secondsnone-error_thresholdnone) trips: the running game emitted a sustained per-frame error (or dropped-log) flood, so Godot was force-killed and the run fast-fails instead of idling to its timeout. The attributes carry the evidence that fired the detector, and the message names a sample error line so the failure self-diagnoses. Tune or disable the guard with [`set_flood_detection`](#set_flood_detection-enablednone-window_secondsnone-error_thresholdnone).
 
 ### CommandError
 

@@ -24,7 +24,7 @@ class GodotE2E:
     def launch(cls, project_path: str, godot_path: str = None,
                port: int = 0, timeout: float = 10.0, extra_args: list = None,
                log_verbosity: str = None, flood_detection: bool = True,
-               flood_window_seconds: float = 2.0, flood_error_threshold: int = 50):
+               flood_window_seconds: float = 2.0, flood_error_threshold: int = 100):
         """Launch Godot and return a connected GodotE2E instance.
 
         ``log_verbosity`` (one of ``"error"`` / ``"warning"`` / ``"info"``)
@@ -36,8 +36,11 @@ class GodotE2E:
         if the running game emits a sustained runtime-error flood, Godot is
         force-killed and the next command raises
         :class:`EngineErrorFloodError` so an unattended run fast-fails instead
-        of spinning to its full timeout. ``flood_window_seconds`` and
-        ``flood_error_threshold`` tune the sliding-window trigger.
+        of spinning to its full timeout. ``flood_window_seconds`` (default
+        ``2.0``) and ``flood_error_threshold`` (default ``100`` combined
+        error + dropped-log entries per window) tune the sliding-window
+        trigger. All three can be changed at runtime via
+        :meth:`set_flood_detection`.
 
         Returns a context manager."""
         from .launcher import GodotLauncher
@@ -317,6 +320,30 @@ class GodotE2E:
         if not isinstance(size, int) or size < 1:
             raise ValueError(f"size must be a positive int, got {size!r}")
         self._client.send_command("set_log_buffer_size", size=size)
+
+    def set_flood_detection(self, *, enabled: bool = None,
+                            window_seconds: float = None,
+                            error_threshold: int = None):
+        """Adjust the engine-error-flood guard at runtime.
+
+        Any argument left as *None* is unchanged, so callers tweak just what
+        they need::
+
+            game.set_flood_detection(error_threshold=300)  # noisier game
+            game.set_flood_detection(enabled=False)         # opt a test out
+
+        This is purely client-side (no wire command) — it retunes the sliding
+        window that watches the engine logs piggybacked on command responses.
+        The startup defaults come from the ``flood_*`` launch kwargs
+        (``flood_error_threshold`` defaults to ``100``). Invalid values
+        (``window_seconds <= 0`` / ``error_threshold < 1``) raise
+        ``ValueError`` at the Python boundary.
+        """
+        self._client.configure_flood_detection(
+            enabled=enabled,
+            window_seconds=window_seconds,
+            error_threshold=error_threshold,
+        )
 
     # --- Misc ---
 

@@ -42,7 +42,7 @@ class GodotLauncher:
         log_verbosity: Optional[str] = None,
         flood_detection: bool = True,
         flood_window_seconds: float = 2.0,
-        flood_error_threshold: int = 50,
+        flood_error_threshold: int = 100,
     ) -> GodotClient:
         """Launch Godot and return a connected :class:`GodotClient`.
 
@@ -132,16 +132,19 @@ class GodotLauncher:
 
         self.client = GodotClient("127.0.0.1", port)
 
-        if flood_detection:
-            detector = EngineErrorFloodDetector(
-                window_seconds=flood_window_seconds,
-                error_threshold=flood_error_threshold,
-            )
-            # The kill hook runs under the client's command lock, so it must
-            # only signal the OS process — never round-trip a command.
-            self.client.enable_flood_detection(
-                detector, on_flood=self._terminate_process
-            )
+        # Always arm the detector (even when disabled) so it can be toggled and
+        # retuned at runtime via ``GodotE2E.set_flood_detection`` without a
+        # relaunch. While disabled it observes nothing and never trips.
+        detector = EngineErrorFloodDetector(
+            window_seconds=flood_window_seconds,
+            error_threshold=flood_error_threshold,
+            enabled=flood_detection,
+        )
+        # The kill hook runs under the client's command lock, so it must
+        # only signal the OS process — never round-trip a command.
+        self.client.enable_flood_detection(
+            detector, on_flood=self._terminate_process
+        )
 
         last_error: Optional[Exception] = None
         while time.monotonic() < deadline:

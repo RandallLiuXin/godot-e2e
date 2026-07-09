@@ -48,8 +48,9 @@ class EngineErrorFloodDetector:
         self,
         *,
         window_seconds: float = 2.0,
-        error_threshold: int = 50,
+        error_threshold: int = 100,
         max_samples: int = 3,
+        enabled: bool = True,
         time_source: Callable[[], float] = time.monotonic,
     ) -> None:
         if window_seconds <= 0:
@@ -61,11 +62,38 @@ class EngineErrorFloodDetector:
         self.window_seconds = window_seconds
         self.error_threshold = error_threshold
         self.max_samples = max_samples
+        self.enabled = enabled
         self._time = time_source
         # One (timestamp, error_count, dropped_count) triple per observed
         # response, oldest first. Trimmed to the window on every observe().
         self._events: Deque[Tuple[float, int, int]] = deque()
         self._samples: Deque[LogEntry] = deque(maxlen=max_samples)
+
+    def configure(
+        self,
+        *,
+        enabled: Optional[bool] = None,
+        window_seconds: Optional[float] = None,
+        error_threshold: Optional[int] = None,
+    ) -> None:
+        """Update detection parameters in place (partial — only non-``None``
+        arguments are applied). Validated the same way as ``__init__`` so an
+        out-of-range value fails fast instead of silently disabling the guard.
+
+        Changing ``window_seconds`` / ``error_threshold`` takes effect on the
+        next :meth:`observe`; already-recorded events are simply re-evaluated
+        against the new window and threshold.
+        """
+        if window_seconds is not None:
+            if window_seconds <= 0:
+                raise ValueError(f"window_seconds must be > 0; got {window_seconds}")
+            self.window_seconds = window_seconds
+        if error_threshold is not None:
+            if error_threshold < 1:
+                raise ValueError(f"error_threshold must be >= 1; got {error_threshold}")
+            self.error_threshold = error_threshold
+        if enabled is not None:
+            self.enabled = bool(enabled)
 
     def reset(self) -> None:
         """Forget all accumulated window state (called at the test boundary)."""
@@ -81,7 +109,13 @@ class EngineErrorFloodDetector:
         threshold: a drop is a log line the buffer could not hold, which under
         E2E only happens when production far outpaces the ~200-entry drain —
         i.e. exactly the flood we want to catch.
+
+        Returns ``None`` immediately while disabled, and records nothing — so
+        toggling detection off at runtime neither trips nor accumulates state.
         """
+        if not self.enabled:
+            return None
+
         error_entries = [e for e in entries if e.level == "error"]
         for e in error_entries:
             self._samples.append(e)

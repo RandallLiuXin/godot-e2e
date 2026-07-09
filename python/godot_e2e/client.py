@@ -92,6 +92,28 @@ class GodotClient:
         self._flood_detector = detector
         self._on_flood = on_flood
 
+    def configure_flood_detection(
+        self,
+        *,
+        enabled: Optional[bool] = None,
+        window_seconds: Optional[float] = None,
+        error_threshold: Optional[int] = None,
+    ) -> None:
+        """Adjust the armed detector's parameters at runtime.
+
+        If no detector is armed yet (e.g. a :meth:`connect`-based client with
+        no launcher), one is created lazily with no kill hook — it can still
+        fast-fail by raising :class:`EngineErrorFloodError`, but there is no
+        launched process for it to terminate.
+        """
+        if self._flood_detector is None:
+            self._flood_detector = EngineErrorFloodDetector()
+        self._flood_detector.configure(
+            enabled=enabled,
+            window_seconds=window_seconds,
+            error_threshold=error_threshold,
+        )
+
     # ------------------------------------------------------------------
     # Connection lifecycle
     # ------------------------------------------------------------------
@@ -221,10 +243,22 @@ class GodotClient:
                 self._on_flood()
             except Exception:
                 pass
+        # When no error-level entry was captured, the flood was driven purely
+        # by dropped log lines (buffer overflow from a warning/print storm).
+        # Say so plainly instead of reporting an "error flood" with no error,
+        # which would send an unattended run's triage after a runtime error
+        # that doesn't exist.
+        if stats.error_count == 0:
+            headline = (
+                "Engine log flood detected (no runtime errors captured — likely "
+                "a warning/print storm)"
+            )
+        else:
+            headline = "Engine error flood detected"
         sample_text = "; ".join(str(e) for e in stats.samples) or \
             "<no error sample captured>"
         msg = (
-            f"Engine error flood detected: {stats.error_count} error(s) and "
+            f"{headline}: {stats.error_count} error(s) and "
             f"{stats.dropped_count} dropped log(s) within "
             f"{stats.window_seconds}s. Godot was terminated early to fast-fail "
             f"instead of spinning to timeout. Sample errors: {sample_text}"

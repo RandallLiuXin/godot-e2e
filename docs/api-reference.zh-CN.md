@@ -541,6 +541,32 @@ def test_print_visible_under_info(game):
 
 drain 间 buffer 溢出时，响应里会带 `_logs_dropped` 计数，客户端把它合成为一条 warning 级别的标记条目（`"<N log entries dropped due to capture buffer overflow>"`）统一追加到 `last_logs`、`collected_logs` 和异常的 `logs` 上。
 
+#### `set_flood_detection(*, enabled=None, window_seconds=None, error_threshold=None)`
+
+运行时调整**引擎错误洪流守卫**。`_process` / `_physics_process` 里的非致命 GDScript 错误会每帧重复触发；在 headless（无 vsync）下这会变成每秒几百上千条同样的错误，无人值守的 run 会一直空转到 timeout 才结束。守卫在命令响应回传的 error / `_logs_dropped` 信号上开一个滑动窗口，窗口内「error + dropped」合计越过阈值即 kill 掉 Godot，下一条命令抛 [`EngineErrorFloodError`](#engineerrorflooderror)。
+
+守卫**默认开启**。启动参数来自 `launch()` 的 kwargs；本方法用于运行中重新调参（留 `None` 的参数保持不变）：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | `bool` | `True` | 开/关守卫。 |
+| `window_seconds` | `float` | `2.0` | 滑动窗口时长。 |
+| `error_threshold` | `int` | `100` | 窗口内触发守卫的「error + dropped」合计条数。 |
+
+`window_seconds <= 0` 或 `error_threshold < 1` 时抛 `ValueError`。同样三个参数也可在启动时通过 `GodotE2E.launch(..., flood_detection=..., flood_window_seconds=..., flood_error_threshold=...)` 设置。
+
+```python
+def test_noisy_game_needs_a_higher_bar(game):
+    game.set_flood_detection(error_threshold=300)  # 这个游戏日志很多
+    ...
+
+def test_intentionally_error_heavy(game):
+    game.set_flood_detection(enabled=False)  # 让这个 test 不受守卫约束
+    ...
+```
+
+守卫只在命令往返时推进（比如 `expect()` / `wait_for_*` 轮询）。纯由 dropped 触发的洪流——只刷 `push_warning` / `print`、没有捕获到 error——会被报成「log flood」而不是「error flood」，避免排障者去找一个并不存在的运行时错误。
+
 ---
 
 ### 其他
@@ -1005,6 +1031,18 @@ class ConnectionLostError(GodotE2EError):
 ```
 
 触发场景：`send_command`（以及所有发送命令的高级方法）。
+
+### EngineErrorFloodError
+
+```python
+class EngineErrorFloodError(GodotE2EError):
+    error_count: int      # 窗口内的 error 级条目数
+    dropped_count: int    # 窗口内的 ring buffer 溢出丢弃数
+    window_seconds: float # 滑动窗口时长
+    samples: list[LogEntry]  # 洪流中几条有代表性的错误行
+```
+
+[洪流守卫](#set_flood_detection-enablednone-window_secondsnone-error_thresholdnone)命中后由下一条命令抛出：被测游戏持续每帧刷错误（或 dropped）洪流，Godot 已被 kill，run 提前失败而不是空转到 timeout。属性携带触发判定的证据，消息里也带了样例错误行，便于失败自诊断。用 [`set_flood_detection`](#set_flood_detection-enablednone-window_secondsnone-error_thresholdnone) 调参或关闭守卫。
 
 ### CommandError
 
