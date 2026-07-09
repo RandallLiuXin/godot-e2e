@@ -32,7 +32,7 @@ from .client import GodotClient
 from .launcher import GodotLauncher
 from .flood import EngineErrorFloodDetector, FloodStats
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 __all__ = [
     "GodotE2E",
