@@ -12,6 +12,7 @@ import time
 from typing import List, Optional
 
 from .client import GodotClient
+from .flood import EngineErrorFloodDetector
 from .types import LogVerbosity
 
 
@@ -39,6 +40,9 @@ class GodotLauncher:
         timeout: float = 10.0,
         extra_args: Optional[List[str]] = None,
         log_verbosity: Optional[str] = None,
+        flood_detection: bool = True,
+        flood_window_seconds: float = 2.0,
+        flood_error_threshold: int = 100,
     ) -> GodotClient:
         """Launch Godot and return a connected :class:`GodotClient`.
 
@@ -58,6 +62,14 @@ class GodotLauncher:
                 the addon's own default (``"warning"``) applies. Can
                 also be adjusted at runtime via
                 :meth:`GodotE2E.set_log_verbosity`.
+            flood_detection: Enable the engine-error-flood guard (default
+                *True*). When a sustained runtime-error flood is detected on
+                the piggybacked log stream, Godot is force-killed and the next
+                command raises :class:`EngineErrorFloodError`, so an unattended
+                run fast-fails instead of spinning to its full timeout.
+            flood_window_seconds: Sliding-window duration for flood detection.
+            flood_error_threshold: Combined error + dropped-log count within
+                the window that trips the flood guard.
 
         Returns:
             A :class:`GodotClient` that has already completed the
@@ -120,6 +132,20 @@ class GodotLauncher:
 
         self.client = GodotClient("127.0.0.1", port)
 
+        # Always arm the detector (even when disabled) so it can be toggled and
+        # retuned at runtime via ``GodotE2E.set_flood_detection`` without a
+        # relaunch. While disabled it observes nothing and never trips.
+        detector = EngineErrorFloodDetector(
+            window_seconds=flood_window_seconds,
+            error_threshold=flood_error_threshold,
+            enabled=flood_detection,
+        )
+        # The kill hook runs under the client's command lock, so it must
+        # only signal the OS process — never round-trip a command.
+        self.client.enable_flood_detection(
+            detector, on_flood=self._terminate_process
+        )
+
         last_error: Optional[Exception] = None
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
@@ -162,6 +188,22 @@ class GodotLauncher:
             self.process = None
 
         self._cleanup_port_file()
+
+    def _terminate_process(self) -> None:
+        """Force-kill the Godot OS process without a graceful quit round-trip.
+
+        Used as the flood-detection kill hook. It runs while the client's
+        command lock is held, so it must not send any command (that would
+        re-enter ``send_command`` and deadlock). The full graceful teardown
+        (quit handshake, port-file cleanup) still happens later in
+        :meth:`kill` during fixture / context-manager cleanup.
+        """
+        proc = self.process
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -23,12 +23,14 @@ from .types import (
     TimeoutError,
     ConnectionLostError,
     CommandError,
+    EngineErrorFloodError,
     MultipleMatchesError,
     NotActionableError,
     ExpectationFailedError,
 )
 from .client import GodotClient
 from .launcher import GodotLauncher
+from .flood import EngineErrorFloodDetector, FloodStats
 
 __version__ = "1.2.0"
 
@@ -56,9 +58,12 @@ __all__ = [
     "TimeoutError",
     "ConnectionLostError",
     "CommandError",
+    "EngineErrorFloodError",
     "MultipleMatchesError",
     "NotActionableError",
     "ExpectationFailedError",
     "GodotClient",
     "GodotLauncher",
+    "EngineErrorFloodDetector",
+    "FloodStats",
 ]
