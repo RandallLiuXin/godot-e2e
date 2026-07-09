@@ -43,11 +43,17 @@ Steps to follow when publishing a new version of godot-e2e.
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
-   This triggers the `publish.yml` GitHub Actions workflow, which builds and uploads to PyPI via Trusted Publisher.
+   This triggers two GitHub Actions workflows:
+   - `publish.yml` builds and uploads to PyPI via Trusted Publisher.
+   - `release.yml` builds the distribution, extracts this version's notes from `CHANGELOG.md`, creates or updates the GitHub Release, and attaches the `.whl` / `.tar.gz` files.
 
-6. **Verify on PyPI**
+6. **Verify publishing workflows and PyPI**
+   - Check that both tag-triggered workflows completed successfully:
+     - `Publish to PyPI`
+     - `GitHub Release`
    - Check https://pypi.org/project/godot-e2e/ for the new version
    - Test installation: `pip install godot-e2e==X.Y.Z`
+   - Check that the GitHub Release for `vX.Y.Z` exists, has the expected notes from `CHANGELOG.md`, and includes the wheel and sdist assets
 
 ## Publish to Godot Asset Library
 
@@ -60,13 +66,12 @@ Steps to follow when publishing a new version of godot-e2e.
 
 ## Post-release
 
-8. **Create a GitHub Release**
-   - Go to the repository's Releases page
-   - Select the `vX.Y.Z` tag
+8. **Review the automated GitHub Release**
+   - `release.yml` creates or updates the release automatically from the `vX.Y.Z` tag
    - Title: `vX.Y.Z`
-   - Body: copy from `CHANGELOG.md` for this version
-   - **If minimum Godot version changed in this release**, prepend a callout to the body: `> **Note:** this release requires Godot X.Y+.`
-   - Attach the built `.whl` and `.tar.gz` from the workflow artifacts if desired
+   - Body: copied from `CHANGELOG.md` for this version
+   - Assets: the built `.whl` and `.tar.gz`
+   - **If minimum Godot version changed in this release**, edit the release body and prepend a callout: `> **Note:** this release requires Godot X.Y+.`
 
 9. **Announce** (optional)
    - Post on relevant communities (Godot forums, Reddit, etc.)
