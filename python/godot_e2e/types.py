@@ -239,6 +239,44 @@ class ConnectionLostError(GodotE2EError):
     """Raised when the Godot process crashes or the TCP connection drops."""
 
 
+class EngineErrorFloodError(GodotE2EError):
+    """Raised when the engine emits a sustained flood of runtime errors and the
+    launcher terminates Godot early to fast-fail instead of spinning to timeout.
+
+    A non-fatal GDScript runtime error inside ``_process`` / ``_physics_process``
+    re-fires every frame; headless Godot has no vsync, so a single such error
+    becomes hundreds-to-thousands of identical error lines per second. Rather
+    than let an unattended E2E run idle to its full timeout (up to 180s) while
+    the game spins and burns CPU, the flood detector trips and Godot is killed.
+    The attributes carry the evidence that fired the detector so the failure
+    self-diagnoses.
+
+    Attributes:
+        error_count: Error-level entries counted within the detection window.
+        dropped_count: Ring-buffer overflow drops counted within the window —
+            each drop is itself a lost error line, so a sustained non-zero
+            dropped count is strong flood evidence.
+        window_seconds: Sliding-window duration the counts were measured over.
+        samples: A few representative error :class:`LogEntry` from the flood,
+            included in the message so the failure names a concrete error line.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_count: int = 0,
+        dropped_count: int = 0,
+        window_seconds: float = 0.0,
+        samples: Optional[List["LogEntry"]] = None,
+    ):
+        super().__init__(message)
+        self.error_count = error_count
+        self.dropped_count = dropped_count
+        self.window_seconds = window_seconds
+        self.samples: List[LogEntry] = samples or []
+
+
 class CommandError(GodotE2EError):
     """Raised when the server returns an error response."""
 

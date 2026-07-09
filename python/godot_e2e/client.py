@@ -6,11 +6,13 @@ import json
 import socket
 import struct
 import threading
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
+from .flood import EngineErrorFloodDetector
 from .types import (
     CommandError,
     ConnectionLostError,
+    EngineErrorFloodError,
     LogEntry,
     NodeNotFoundError,
     parse_log_entries,
@@ -24,7 +26,12 @@ class GodotClient:
         [4-byte big-endian uint32 payload length][UTF-8 JSON payload]
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 6008) -> None:
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 6008,
+        collected_logs_limit: Optional[int] = 10_000,
+    ) -> None:
         self.host = host
         self.port = port
         self._sock: socket.socket | None = None
@@ -36,6 +43,17 @@ class GodotClient:
         # test (the pytest plugin resets it per-test).
         self.last_logs: List[LogEntry] = []
         self.collected_logs: List[LogEntry] = []
+        # Safety cap on the test-level accumulator so a sustained error flood
+        # can't grow ``collected_logs`` without bound (mirrors the addon-side
+        # ring buffer). When the cap is exceeded, oldest entries are discarded
+        # and counted in ``collected_logs_dropped``. ``None`` disables the cap.
+        self._collected_logs_limit = collected_logs_limit
+        self.collected_logs_dropped = 0
+        # Engine-error-flood detection, armed by the launcher via
+        # ``enable_flood_detection``. Off by default so a bare client (e.g. in
+        # unit tests) behaves exactly as before.
+        self._flood_detector: Optional[EngineErrorFloodDetector] = None
+        self._on_flood: Optional[Callable[[], None]] = None
 
     # ------------------------------------------------------------------
     # Log capture API
@@ -46,6 +64,33 @@ class GodotClient:
         plugin at the start of each test so logs don't leak across tests."""
         self.collected_logs = []
         self.last_logs = []
+        self.collected_logs_dropped = 0
+        if self._flood_detector is not None:
+            self._flood_detector.reset()
+
+    # ------------------------------------------------------------------
+    # Flood detection
+    # ------------------------------------------------------------------
+
+    def enable_flood_detection(
+        self,
+        detector: EngineErrorFloodDetector,
+        on_flood: Optional[Callable[[], None]] = None,
+    ) -> None:
+        """Arm engine-error-flood detection for this client.
+
+        ``detector`` is fed every response's log delta inside
+        :meth:`send_command`. When it trips, ``on_flood`` (if given) is invoked
+        to stop the flood at its source, then :class:`EngineErrorFloodError`
+        is raised.
+
+        ``on_flood`` runs while the command lock is held, so it MUST NOT call
+        back into :meth:`send_command` — e.g. don't pass ``launcher.kill``,
+        which sends a ``quit`` command and would deadlock on the non-reentrant
+        lock. Pass a hook that only signals the OS process (terminate/kill).
+        """
+        self._flood_detector = detector
+        self._on_flood = on_flood
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -120,6 +165,15 @@ class GodotClient:
                 ))
             self.last_logs = entries
             self.collected_logs.extend(entries)
+            self._trim_collected_logs()
+
+            # Flood check runs before the per-command error check: a sustained
+            # error flood should fast-fail the whole run even when this
+            # particular response happened to succeed.
+            if self._flood_detector is not None:
+                stats = self._flood_detector.observe(entries, dropped)
+                if stats is not None:
+                    self._raise_flood(stats)
 
             if "error" in response:
                 error_code = response["error"]
@@ -140,6 +194,50 @@ class GodotClient:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _trim_collected_logs(self) -> None:
+        """Enforce the ``collected_logs`` cap by dropping oldest entries.
+
+        Keeps the most recent ``_collected_logs_limit`` entries and records how
+        many were discarded in ``collected_logs_dropped`` so the overflow is
+        observable rather than silent. No-op when the cap is ``None``.
+        """
+        limit = self._collected_logs_limit
+        if limit is None or len(self.collected_logs) <= limit:
+            return
+        overflow = len(self.collected_logs) - limit
+        del self.collected_logs[:overflow]
+        self.collected_logs_dropped += overflow
+
+    def _raise_flood(self, stats) -> None:
+        """Stop the flood at its source and raise :class:`EngineErrorFloodError`.
+
+        ``_on_flood`` (the launcher's process kill) runs first so Godot stops
+        burning frames even if the caller swallows the exception. It runs under
+        the command lock, so it must not re-enter :meth:`send_command`.
+        """
+        if self._on_flood is not None:
+            try:
+                self._on_flood()
+            except Exception:
+                pass
+        sample_text = "; ".join(str(e) for e in stats.samples) or \
+            "<no error sample captured>"
+        msg = (
+            f"Engine error flood detected: {stats.error_count} error(s) and "
+            f"{stats.dropped_count} dropped log(s) within "
+            f"{stats.window_seconds}s. Godot was terminated early to fast-fail "
+            f"instead of spinning to timeout. Sample errors: {sample_text}"
+        )
+        exc = EngineErrorFloodError(
+            msg,
+            error_count=stats.error_count,
+            dropped_count=stats.dropped_count,
+            window_seconds=stats.window_seconds,
+            samples=stats.samples,
+        )
+        exc.logs = self.last_logs
+        raise exc
 
     def _read_response(self) -> Dict[str, Any]:
         """Read one length-prefixed JSON message from the socket."""

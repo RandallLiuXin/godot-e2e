@@ -23,7 +23,8 @@ class GodotE2E:
     @classmethod
     def launch(cls, project_path: str, godot_path: str = None,
                port: int = 0, timeout: float = 10.0, extra_args: list = None,
-               log_verbosity: str = None):
+               log_verbosity: str = None, flood_detection: bool = True,
+               flood_window_seconds: float = 2.0, flood_error_threshold: int = 50):
         """Launch Godot and return a connected GodotE2E instance.
 
         ``log_verbosity`` (one of ``"error"`` / ``"warning"`` / ``"info"``)
@@ -31,12 +32,22 @@ class GodotE2E:
         addon default (``"warning"``) applies. See
         :meth:`set_log_verbosity` for adjusting it at runtime.
 
+        ``flood_detection`` (default *True*) arms the engine-error-flood guard:
+        if the running game emits a sustained runtime-error flood, Godot is
+        force-killed and the next command raises
+        :class:`EngineErrorFloodError` so an unattended run fast-fails instead
+        of spinning to its full timeout. ``flood_window_seconds`` and
+        ``flood_error_threshold`` tune the sliding-window trigger.
+
         Returns a context manager."""
         from .launcher import GodotLauncher
         launcher = GodotLauncher()
         client = launcher.launch(
             project_path, godot_path, port, timeout, extra_args,
             log_verbosity=log_verbosity,
+            flood_detection=flood_detection,
+            flood_window_seconds=flood_window_seconds,
+            flood_error_threshold=flood_error_threshold,
         )
         return cls(client, launcher)
 
