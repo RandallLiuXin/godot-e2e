@@ -17,13 +17,8 @@ If no category fits, add a new one following [Keep a Changelog](https://keepacha
 
 ## Added
 
-- Engine-error-flood guard: detects a sustained per-frame runtime-error flood on the engine-log stream, force-kills Godot, and raises `EngineErrorFloodError` so unattended runs fast-fail instead of idling to their full timeout; on by default (window 2.0s, threshold 100), tunable via `flood_detection` / `flood_window_seconds` / `flood_error_threshold` launch kwargs and at runtime via `game.set_flood_detection(...)`. A dropped-only (warning/print) storm is reported as a "log flood" rather than an "error flood". Also bounds the per-test `collected_logs` accumulator. (#PR_NUMBER) — @LiuXin
-- GitHub Pages documentation site built with MkDocs Material — bilingual (en + zh-CN) via `mkdocs-static-i18n`, full-text search across both languages, language switcher in the header, dedicated landing page distinct from the README. Auto-deploys to `https://randallliuxin.github.io/godot-e2e/` on every push to `main` that touches `docs/`, `mkdocs.yml`, or `requirements-docs.txt`. (#PR_NUMBER) — @LiuXin
-
 ## Changed
 
 ## Fixed
-
-- `docs/update/release-checklist.md` step 7 — corrected the Asset Library field name (`Download Commit/URL`, not `Commit/Tag`) and clarified that it requires a full commit hash; tag names are rejected by the form. — @LiuXin
 
 ## Removed
