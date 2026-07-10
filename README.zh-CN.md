@@ -1,14 +1,42 @@
-[English](README.md) | **中文**
+<h1 align="center">godot-e2e</h1>
 
-# godot-e2e
+<p align="center"><strong>适用于 Godot 的进程外端到端（E2E）测试工具</strong></p>
 
-[![CI](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/godot-e2e)](https://pypi.org/project/godot-e2e/)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://pypi.org/project/godot-e2e/)
-[![Godot](https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine)](https://godotengine.org/)
-[![License](https://img.shields.io/github/license/RandallLiuXin/godot-e2e)](LICENSE)
+<p align="center">
+  <a href="https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml"><img src="https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/godot-e2e/"><img src="https://img.shields.io/pypi/v/godot-e2e" alt="PyPI"></a>
+  <a href="https://pypi.org/project/godot-e2e/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&amp;logoColor=white" alt="Python 3.9+"></a>
+  <a href="https://godotengine.org/"><img src="https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine" alt="Godot 4.5+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green" alt="Apache 2.0 License"></a>
+</p>
 
-适用于 Godot 的进程外端到端（E2E）测试工具
+<p align="center"><a href="README.md">English</a> · <strong>中文</strong></p>
+
+---
+
+## 实际运行效果
+
+以下录屏展示了 `pytest` 如何驱动真实的 Godot 游戏进程，而不是模拟场景或仅限编辑器内的自动化。
+测试会启动项目、与运行中的游戏交互，并将结果返回给 Python。点击任一演示可查看原始尺寸。
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/gif/demo_01.gif">
+        <img src="docs/gif/demo_01.gif" alt="pytest 启动 Godot 项目并验证玩法流程" width="100%">
+      </a>
+      <br>
+      <sub>从 pytest 启动真实的 Godot 项目，并验证完整的玩法流程。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/gif/demo_02.gif">
+        <img src="docs/gif/demo_02.gif" alt="pytest 驱动运行中的 Godot 游戏并返回测试结果" width="100%">
+      </a>
+      <br>
+      <sub>通过进程外测试驱动运行中的游戏，并将结果返回给 pytest。</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 

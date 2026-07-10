@@ -1,14 +1,43 @@
-**English** | [中文](README.zh-CN.md)
+<h1 align="center">godot-e2e</h1>
 
-# godot-e2e
+<p align="center"><strong>Out-of-process E2E testing tool for Godot</strong></p>
 
-[![CI](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg)](https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/godot-e2e)](https://pypi.org/project/godot-e2e/)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://pypi.org/project/godot-e2e/)
-[![Godot](https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine)](https://godotengine.org/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-green)](LICENSE)
+<p align="center">
+  <a href="https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml"><img src="https://github.com/RandallLiuXin/godot-e2e/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/godot-e2e/"><img src="https://img.shields.io/pypi/v/godot-e2e" alt="PyPI"></a>
+  <a href="https://pypi.org/project/godot-e2e/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&amp;logoColor=white" alt="Python 3.9+"></a>
+  <a href="https://godotengine.org/"><img src="https://img.shields.io/badge/Godot-4.5%2B-blue?logo=godotengine" alt="Godot 4.5+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green" alt="Apache 2.0 License"></a>
+</p>
 
-Out-of-process E2E testing tool for Godot
+<p align="center"><strong>English</strong> · <a href="README.zh-CN.md">中文</a></p>
+
+---
+
+## See It in Action
+
+These recordings show `pytest` driving real Godot game processes—not mocked scenes or
+editor-only automation. Tests launch the project, interact with the running game, and report
+the results back to Python. Click either demo to view it at full size.
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/gif/demo_01.gif">
+        <img src="docs/gif/demo_01.gif" alt="pytest launching a Godot project and verifying a gameplay flow" width="100%">
+      </a>
+      <br>
+      <sub>Launch a live Godot project from pytest and verify a complete gameplay flow.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/gif/demo_02.gif">
+        <img src="docs/gif/demo_02.gif" alt="pytest driving a running Godot game and reporting test results" width="100%">
+      </a>
+      <br>
+      <sub>Drive a running game through an external test and report the result back to pytest.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
