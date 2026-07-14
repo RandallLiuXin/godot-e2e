@@ -11,7 +11,7 @@ product: godot-e2e
 category: Godot end-to-end testing framework
 one_liner: Out-of-process E2E testing for Godot 4.5+, driven from synchronous Python and pytest.
 current_version: "1.3.0"
-current_status: alpha package, public repository, public PyPI package
+current_status: alpha package, public repository, PyPI publishing status needs human confirmation
 license: Apache-2.0
 primary_audience:
   - Godot game developers who want automated gameplay and UI regression tests
@@ -175,12 +175,13 @@ pip install -e .
 
 ### Configure the Godot Binary
 
-godot-e2e looks for Godot in this order:
+godot-e2e resolves the Godot executable in this order:
 
-1. `GODOT_PATH`
-2. common executable names on `PATH`, including `godot`, `godot4`, and
+1. `--godot-path` on the `godot-e2e` CLI, which writes and overrides
+   `GODOT_PATH` for the pytest run
+2. `GODOT_PATH`
+3. common executable names on `PATH`, including `godot`, `godot4`, and
    `Godot_v4`
-3. an explicit `--godot-path` CLI argument
 
 ### Write a Test
 
